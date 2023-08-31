@@ -9,6 +9,14 @@
     <StartupObject>RDR2AudioTool.Program</StartupObject>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Title>RDR 2 Audio Tool</Title>
+    <IsPublishable>True</IsPublishable>
+	<Company>WesternGamer</Company>
+        <Copyright>© WesternGamer 2023</Copyright>
+        <Description>Tool to edit RDR2 AWC files.</Description>
+        <Product>RDR 2 Audio Tool</Product>
+        <AssemblyTitle>RDR2AudioTool</AssemblyTitle>
+        <Version>0.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
