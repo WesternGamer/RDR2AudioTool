@@ -1,0 +1,23 @@
+﻿<Window x:Class="RDR2AudioTool.ReplaceAudioWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:RDR2AudioTool"
+        mc:Ignorable="d"
+        Title="ReplaceAudioWindow" Height="110" Width="460" ResizeMode="NoResize" Style="{DynamicResource CustomToolWindowStyleCloseOnly}" WindowStartupLocation="CenterOwner">
+    <Grid>
+        <Label Content="File:" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
+        <TextBox x:Name="FileTextBox" HorizontalAlignment="Left" Margin="41,14,0,0" TextWrapping="NoWrap" VerticalAlignment="Top" Width="374" AcceptsReturn="False"/>
+        <Label Content="Codec:" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top"/>
+        <ComboBox x:Name="CodecSelectionBox" HorizontalAlignment="Left" Margin="61,43,0,0" VerticalAlignment="Top" Width="120" SelectionChanged="CodecSelectionBox_SelectionChanged">
+            <ComboBoxItem Content="PCM"/>
+            <ComboBoxItem Content="ADPCM"/>
+            <ComboBoxItem Content="VORBIS"/>
+        </ComboBox>
+        <Button x:Name="ReplaceButton" Content="Replace" HorizontalAlignment="Left" Margin="194,45,0,0" VerticalAlignment="Top" Width="120" Click="ReplaceButton_Click"/>
+        <Button x:Name="CancelButton" Content="Cancel" HorizontalAlignment="Left" Margin="326,46,0,0" VerticalAlignment="Top" Width="120" Click="CancelButton_Click"/>
+        <Button Content="..." HorizontalAlignment="Left" Margin="423,14,0,0" VerticalAlignment="Top" Width="23" Click="Button_Click"/>
+
+    </Grid>
+</Window>

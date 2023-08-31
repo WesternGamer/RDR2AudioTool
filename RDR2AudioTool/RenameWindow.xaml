@@ -1,0 +1,17 @@
+﻿<Window x:Class="RDR2AudioTool.RenameWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:RDR2AudioTool"
+        mc:Ignorable="d"
+        Title="RenameWindow" Height="120" Width="650" ResizeMode="NoResize" Background="#FF1F1F1F" Style="{DynamicResource CustomToolWindowStyleCloseOnly}" WindowStartupLocation="CenterOwner">
+    <Grid>
+        <TextBox x:Name="NameTextbox" HorizontalAlignment="Left" Margin="54,14,0,0" TextWrapping="NoWrap" VerticalAlignment="Top" Width="566" AcceptsReturn="False"/>
+        <Button x:Name="OkButton" Content="OK" HorizontalAlignment="Left" Margin="56,47,0,0" VerticalAlignment="Top" Width="193" Click="OkButton_Click"/>
+        <Button x:Name="CancelButton" Content="Cancel" HorizontalAlignment="Left" Margin="384,47,0,0" VerticalAlignment="Top" Width="193" Click="CancelButton_Click"/>
+        <Label Content="Name:" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
+        <Label x:Name="InvalidHashWarning" Content="Invalid Hash" HorizontalAlignment="Left" Margin="284,47,0,0" VerticalAlignment="Top" Width="70" Background="Red" Height="22" FontSize="11" Visibility="Hidden"/>
+
+    </Grid>
+</Window>

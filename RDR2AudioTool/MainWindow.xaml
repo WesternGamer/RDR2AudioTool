@@ -1,0 +1,19 @@
+﻿<Window x:Class="RDR2AudioTool.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:RDR2AudioTool"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="313" Width="800" ResizeMode="NoResize" Background="#FF1F1F1F" Style="{DynamicResource CustomToolWindowStyleCloseOnly}">
+    <Grid Background="#FF1F1F1F">
+        <Label Content="What would you like to do?" HorizontalAlignment="Center" Margin="0,24,0,0" VerticalAlignment="Top" Foreground="White" FontWeight="Bold" FontSize="24"/>
+        <Label Content="Edit AWC" HorizontalAlignment="Left" Margin="159,97,0,0" VerticalAlignment="Top" FontSize="22" FontWeight="Bold" Foreground="White" RenderTransformOrigin="0.5,0.5"/>
+        <Label Content="Edit a Stereo AWC" HorizontalAlignment="Left" Margin="494,97,0,0" VerticalAlignment="Top" FontSize="22" FontWeight="Bold" Foreground="White"/>
+        <TextBlock Text="Allows you to edit common playlist style AWC files." HorizontalAlignment="Left" Margin="101,136,0,0" VerticalAlignment="Top" Background="{x:Null}" Foreground="White" Height="79" Width="223" TextWrapping="WrapWithOverflow"/>
+        <TextBlock HorizontalAlignment="Left" Margin="480,146,0,0" TextWrapping="WrapWithOverflow" Text="Allows you to edit common stereo style awc files." VerticalAlignment="Top" Foreground="White" Width="224" Height="58"/>
+        <Button x:Name="OpenEditingMenuButton" Content="Open" HorizontalAlignment="Left" Margin="182,212,0,0" VerticalAlignment="Top" Width="60" Click="Button_Click"/>
+        <Button x:Name="OpenStereoEditingMenuButton" Content="Open" HorizontalAlignment="Left" Margin="562,212,0,0" VerticalAlignment="Top" Width="60" Click="Button_Click_1"/>
+
+    </Grid>
+</Window>
