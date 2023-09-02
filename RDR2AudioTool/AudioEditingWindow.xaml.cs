@@ -200,6 +200,7 @@ namespace RDR2AudioTool
                 }
                 else
                 {
+                    StreamList.IsEnabled = true;
                     StreamList.SelectedIndex = 0;
                 }
             }
