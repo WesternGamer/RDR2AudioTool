@@ -1,7 +1,8 @@
-﻿using SharpDX;
+﻿
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -510,14 +511,14 @@ namespace CodeWalker
             return ((arr != null) && (arr.Length > 0)) ? arr : null;
         }
 
-        public static Matrix GetMatrix(XmlNode node)
+        public static Matrix4x4 GetMatrix(XmlNode node)
         {
-            if (node == null) return Matrix.Identity;
+            if (node == null) return Matrix4x4.Identity;
             var arr = GetRawFloatArray(node);
-            if ((arr == null) || (arr.Length != 16)) return Matrix.Identity;
-            return new Matrix(arr);
+            if ((arr == null) || (arr.Length != 16)) return Matrix4x4.Identity;
+            return new Matrix4x4(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5], arr[6], arr[7], arr[8], arr[9], arr[10], arr[11], arr[12], arr[13], arr[14], arr[15]);
         }
-        public static Matrix GetChildMatrix(XmlNode node, string name)
+        public static Matrix4x4 GetChildMatrix(XmlNode node, string name)
         {
             var cnode = node.SelectSingleNode(name);
             return GetMatrix(cnode);

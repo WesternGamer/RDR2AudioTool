@@ -22,13 +22,11 @@
 
 //shamelessly stolen
 
-
-
-using SharpDX;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -235,9 +233,9 @@ namespace CodeWalker.GameFiles
             return v;
         }
 
-        public Matrix ReadMatrix()
+        public Matrix4x4 ReadMatrix()
         {
-            Matrix m = new Matrix();
+            Matrix4x4 m = new Matrix4x4();
             m.M11 = ReadSingle();
             m.M21 = ReadSingle();
             m.M31 = ReadSingle();
@@ -456,7 +454,7 @@ namespace CodeWalker.GameFiles
             Write(value.W);
         }
 
-        public void Write(Matrix value)
+        public void Write(Matrix4x4 value)
         {
             Write(value.M11);
             Write(value.M21);

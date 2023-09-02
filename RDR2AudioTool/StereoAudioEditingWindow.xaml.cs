@@ -2,7 +2,6 @@
 using CodeWalker;
 using CodeWalker.GameFiles;
 using Microsoft.Win32;
-using SharpDX.Win32;
 using System;
 using System.Collections.Generic;
 using System.Drawing;

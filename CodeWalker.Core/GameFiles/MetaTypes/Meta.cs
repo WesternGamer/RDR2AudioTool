@@ -1,49 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using SharpDX;
 
 using TC = System.ComponentModel.TypeConverterAttribute;
 using EXP = System.ComponentModel.ExpandableObjectConverter;
 
 namespace CodeWalker.GameFiles
 {
-
-
-
-
-    
-
-    
-
-
-
-
-
-
-
-
-
-    
-    
-    
-    
-
-
- 
-
-
-
-
-
-
-
-
-
     [TC(typeof(EXP))] public struct MetaHash
     {
         public uint Hash { get; set; }

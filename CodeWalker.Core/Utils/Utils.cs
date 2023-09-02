@@ -4,12 +4,10 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using SharpDX;
-using Color = SharpDX.Color;
-using Half = SharpDX.Half;
 
 namespace CodeWalker
 {
@@ -163,16 +161,6 @@ namespace CodeWalker
         public static string GetQuaternionXmlString(Quaternion q)
         {
             return string.Format("x=\"{0}\" y=\"{1}\" z=\"{2}\" w=\"{3}\"", ToString(q.X), ToString(q.Y), ToString(q.Z), ToString(q.W));
-        }
-        public static string GetHalf2String(Half2 v, string d = ", ")
-        {
-            var f = Half.ConvertToFloat(new[] { v.X, v.Y });
-            return ToString(f[0]) + d + ToString(f[1]);
-        }
-        public static string GetHalf4String(Half4 v, string d = ", ")
-        {
-            var f = Half.ConvertToFloat(new[] { v.X, v.Y, v.Z, v.W });
-            return ToString(f[0]) + d + ToString(f[1]) + d + ToString(f[2]) + d + ToString(f[3]);
         }
         public static string GetColourString(Color v, string d = ", ")
         {
