@@ -44,8 +44,8 @@ namespace RDR2AudioTool
 
         public AudioEditingWindow()
         {
-            Loaded += delegate (object sender, RoutedEventArgs e) { this.Owner.Hide(); };
-            Closed += delegate (object? sender, EventArgs e) { this.Owner.Close(); };
+            //Loaded += delegate (object sender, RoutedEventArgs e) { this.Owner.Hide(); };
+            //Closed += delegate (object? sender, EventArgs e) { this.Owner.Close(); };
             waveOut = new WaveOut();
             InitializeComponent();
         }
@@ -116,6 +116,34 @@ namespace RDR2AudioTool
 
         private void RenameButton_Click(object sender, RoutedEventArgs e)
         {
+            if (Awc.MultiChannelFlag)
+            {
+                string name = null;
+
+                if (Awc.Streams[1].Name.EndsWith("_right"))
+                {
+                    name = Awc.Streams[1].Name.Substring(0, Awc.Streams[1].Name.Length - 6);
+                }
+                else 
+                {
+                    name = "";
+                }
+
+                RenameWindow w = new RenameWindow(name);
+
+                bool? r = w.ShowDialog();
+
+                if (r == true)
+                {
+                    Awc.Streams[1].Name = w.String + "_right";
+                    Awc.Streams[2].Name = w.String + "_left";
+                }
+
+                RefreshList();
+
+                return;
+            }
+
             RenameWindow window = new RenameWindow((StreamList.SelectedItem as ItemInfo).Stream.Name);
 
             bool? result = window.ShowDialog();
@@ -163,114 +191,47 @@ namespace RDR2AudioTool
                 SaveButton.IsEnabled = true;
                 RenameButton.IsEnabled = true;
                 ReplaceButton.IsEnabled = true;
-                DeleteButton.IsEnabled = true;
-                MoreOptionsButton.IsEnabled = true;
+                //DeleteButton.IsEnabled = true;
+                //MoreOptionsButton.IsEnabled = true;
+
+                if (Awc.MultiChannelFlag)
+                {
+                    StreamList.IsEnabled = false;
+                }
+                else
+                {
+                    StreamList.SelectedIndex = 0;
+                }
             }
         }
 
         private void ReplaceButton_Click(object sender, RoutedEventArgs e)
         {
-            ReplaceAudioWindow window = new ReplaceAudioWindow(false);
+            ReplaceAudioWindow window = new ReplaceAudioWindow(Awc.MultiChannelFlag);
 
             bool? result = window.ShowDialog();
 
             if (result == true)
             {
-                for (int i = 0; i < StreamList.SelectedItems.Count; i++)
+                if (Awc.MultiChannelFlag)
                 {
-
                     if (Awc?.Streams != null)
                     {
-                        for (int c = 0; c < Awc.Streams.Length; c++)
-                        {
-                            if (Awc.Streams[c].Name == (StreamList.SelectedItems[i] as ItemInfo).Stream.Name)
-                            {
+                        Awc?.ReplaceAudioStream(null, (uint)(window.SampleCount / 2), (uint)window.SampleRate, window.PcmData, window.CodecType);
+                    }
 
-                                if ((window.CodecType == AwcCodecType.PCM) || (window.CodecType == AwcCodecType.ADPCM))
-                                {
-                                    if (Awc.Streams[c].VorbisChunk != null)
-                                    {
-                                        Awc.Streams[c].VorbisChunk = null;
-                                    }
+                    RefreshList();
+                    return;
+                }
 
-                                    List<AwcChunk> chunks = Awc.Streams[c].Chunks.ToList();
-
-                                    for (int p = 0; p < chunks.Count; p++)
-                                    {
-                                        if (chunks[p].GetType() == typeof(AwcVorbisChunk))
-                                        {
-                                            chunks.Remove(chunks[p]);
-                                        }
-                                    }
-                                    chunks.ToArray();
-
-                                    if (Awc?.MultiChannelSource == null)
-                                    {
-                                        Unk1Chunk chunk = new Unk1Chunk(null);
-                                        chunk.Samples = (uint)window.SampleCount;
-                                        chunk.LoopPoint = -1;
-                                        chunk.SamplesPerSecond = (ushort)window.SampleRate;
-                                        chunk.Headroom = 0;
-                                        chunk.Unk1 = (ushort)window.SampleCount;
-                                        chunk.LoopBegin = 0;
-                                        chunk.LoopEnd = 0;
-                                        chunk.PlayEnd = 0;
-                                        chunk.PlayBegin = 0;
-                                        chunk.Unk2 = -1;
-                                        chunk.Unk3 = 50000;
-                                        chunk.Unk4 = 0;
-                                        chunks.Add(chunk);
-                                    }
-
-                                    Awc.Streams[c].Chunks = chunks.ToArray();
-
-
-                                }
-
-                                if (Awc.MultiChannelFlag)
-                                {
-                                    if (Awc.Streams[c].StreamFormat != null)
-                                    {
-                                        Awc.Streams[c].StreamFormat.Samples = (uint)window.SampleCount;
-                                        Awc.Streams[c].StreamFormat.SamplesPerSecond = (ushort)window.SampleRate;
-
-                                        Awc.Streams[c].DataChunk = new AwcDataChunk(null);
-                                        Awc.Streams[c].DataChunk.Data = window.PcmData;
-                                    }
-                                }
-                                else
-                                {
-                                    if (Awc.Streams[c].FormatChunk != null)
-                                    {
-                                        Awc.Streams[c].FormatChunk.Samples = (uint)window.SampleCount;
-                                        Awc.Streams[c].FormatChunk.SamplesPerSecond = (ushort)window.SampleRate;
-
-                                        if (Awc.Streams[c].DataChunk == null) Awc.Streams[c].DataChunk = new AwcDataChunk(new AwcChunkInfo() { Type = AwcChunkType.data });
-
-                                        Awc.Streams[c].DataChunk.Data = window.PcmData;
-                                    }
-
-                                    if (Awc.Streams[c].Unk1 != null)
-                                    {
-                                        Awc.Streams[c].Unk1.Samples = (uint)window.SampleCount;
-                                        Awc.Streams[c].Unk1.SamplesPerSecond = (ushort)window.SampleRate;
-                                        Awc.Streams[c].Unk1.Unk1 = (ushort)window.SampleCount; ///////May need to be adjusted
-
-                                        if (Awc.Streams[c].DataChunk == null) Awc.Streams[c].DataChunk = new AwcDataChunk(new AwcChunkInfo() { Type = AwcChunkType.data });
-
-                                        Awc.Streams[c].DataChunk.Data = window.PcmData;
-                                    }
-                                }
-
-
-                                break;
-                            }
-                        }
+                for (int i = 0; i < StreamList.SelectedItems.Count; i++)
+                {
+                    if (Awc?.Streams != null)
+                    {
+                        Awc?.ReplaceAudioStream((StreamList.SelectedItems[i] as ItemInfo).Stream.Hash, (uint)window.SampleCount, (uint)window.SampleRate, window.PcmData, window.CodecType);
                     }
                 }
             }
-
-
 
             RefreshList();
         }

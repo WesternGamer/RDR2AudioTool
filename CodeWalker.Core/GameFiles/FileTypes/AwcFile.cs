@@ -366,6 +366,196 @@ namespace CodeWalker.GameFiles
             return f;
         }
 
+        public void ReplaceAudioStream(MetaHash? streamHash, uint sampleCount, uint sampleRate, byte[] pcmAudioData, AwcCodecType targetCodec)
+        {
+            if (MultiChannelFlag)
+            {
+                ReplaceAudioStreamStereo(sampleCount, sampleRate, pcmAudioData, targetCodec);
+                return;
+            }
+            else
+            {
+                ReplaceAudioStreamSingle(streamHash.Value, sampleCount, sampleRate, pcmAudioData, targetCodec);
+                return;
+            }
+        }
+
+        public void ReplaceAudioStreamStereo(uint sampleCount, uint sampleRate, byte[] pcmAudioData, AwcCodecType targetCodec)
+        {
+            var outputs = new List<List<byte>>();
+            for (int i = 0; i < 2; i++)
+            {
+                outputs.Add(new List<byte>());
+            }
+
+            int channelCount = 2;
+            var count = 0;
+            for (int i = 0; i < pcmAudioData.Length; i += (16 / 8))
+            {
+                for (int j = 0; j < (16 / 8); j++)
+                {
+                    outputs[count].Add(pcmAudioData[i + j]);
+                }
+                count++;
+                channelCount--;
+                if (channelCount >= 1) continue;
+                channelCount = 2;
+                count = 0;
+            }
+
+            byte[] leftPcm = outputs[0].ToArray();
+            byte[] rightPcm = outputs[1].ToArray();
+
+            if (targetCodec == AwcCodecType.ADPCM)
+            {
+                leftPcm = ADPCMCodec.EncodeADPCM(leftPcm, (int)sampleCount);
+                rightPcm = ADPCMCodec.EncodeADPCM(rightPcm, (int)sampleCount);
+            }
+            else if (targetCodec == AwcCodecType.VORBIS)
+            {
+                throw new NotImplementedException("Vorbis support is not implemented");
+            }
+
+            if (Streams.Length != 3)
+            {
+                throw new InvalidOperationException($"Unexpected stream count of {Streams.Length}");
+            }
+
+            AwcStream rightStream = Streams[1];
+            AwcStream leftStream = Streams[2];
+
+            if (targetCodec == AwcCodecType.ADPCM || targetCodec == AwcCodecType.PCM)
+            {
+                ReplacePCM(ref rightStream, sampleCount, sampleRate, rightPcm, targetCodec, true);
+                ReplacePCM(ref leftStream, sampleCount, sampleRate, leftPcm, targetCodec, true);
+            }
+            else if (targetCodec == AwcCodecType.VORBIS)
+            {
+                ReplaceVorbis(ref rightStream, sampleCount, sampleRate, rightPcm, true);
+                ReplaceVorbis(ref leftStream, sampleCount, sampleRate, leftPcm, true);
+            }
+
+            Streams[1] = rightStream;
+            Streams[2] = leftStream;
+        }
+
+        public void ReplaceAudioStreamSingle(MetaHash streamHash, uint sampleCount, uint sampleRate, byte[] pcmAudioData, AwcCodecType targetCodec)
+        {
+            if (targetCodec == AwcCodecType.ADPCM)
+            {
+                pcmAudioData = ADPCMCodec.EncodeADPCM(pcmAudioData, (int)sampleCount);
+            }
+            else if (targetCodec == AwcCodecType.VORBIS)
+            {
+                throw new NotImplementedException("Vorbis support is not implemented");
+            }
+
+            AwcStream targetStream = null;
+            foreach (AwcStream stream in Streams)
+            {
+                if (stream.Hash == streamHash)
+                {
+                    targetStream = stream;
+                    break;
+                }
+            }
+
+            if (targetStream == null)
+            {
+                throw new InvalidOperationException($"Unable to find stream {streamHash}");
+            }
+
+            if (targetCodec == AwcCodecType.ADPCM || targetCodec == AwcCodecType.PCM)
+            {
+                ReplacePCM(ref targetStream, sampleCount, sampleRate, pcmAudioData, targetCodec, false);
+            }
+            else if (targetCodec == AwcCodecType.VORBIS)
+            {
+                ReplaceVorbis(ref targetStream, sampleCount, sampleRate, pcmAudioData, false);
+            }
+
+            for (int i = 0; i < Streams.Length; i++)
+            {
+                var stream = Streams[i];
+                if (stream.Hash == streamHash)
+                {
+                    stream = targetStream;
+                }
+            }
+        }
+
+        public void ReplacePCM(ref AwcStream stream, uint sampleCount, uint sampleRate, byte[] pcmAudioData, AwcCodecType codecType, bool isStereo = false)
+        {
+            if (stream.VorbisChunk != null)
+            {
+                stream.VorbisChunk = null;
+            }
+
+            if (stream.FormatChunk != null)
+            {
+                stream.FormatChunk = null;
+            }
+
+            List<AwcChunk> chunks = stream.Chunks.ToList();
+            stream.Chunks = null;
+
+            for (int p = 0; p < chunks.Count; p++)
+            {
+                if (chunks[p].GetType() == typeof(AwcVorbisChunk))
+                {
+                    chunks.Remove(chunks[p]);
+                    continue;
+                }
+
+                if (chunks[p].GetType() == typeof(AwcFormatChunk))
+                {
+                    chunks.Remove(chunks[p]);
+                }
+            }
+            chunks.ToArray();
+
+            if (!isStereo)
+            {
+                if (stream.Unk1 == null)
+                {
+                    stream.Unk1 = new Unk1Chunk(new AwcChunkInfo() { Type = AwcChunkType.unk1 });
+                    stream.Unk1.LoopPoint = -1;
+                    stream.Unk1.Headroom = 0;
+                    stream.Unk1.LoopBegin = 0;
+                    stream.Unk1.LoopEnd = 0;
+                    stream.Unk1.PlayEnd = 0;
+                    stream.Unk1.PlayBegin = 0;
+                    stream.Unk1.Unk2 = -1;
+                    stream.Unk1.Peak = 0;
+                    stream.Unk1.Unk4 = 0;
+                    chunks.Add(stream.Unk1);
+                }
+
+                stream.Unk1.Samples = sampleCount;
+                stream.Unk1.SamplesPerSecond = (ushort)sampleRate;
+                stream.Unk1.Unk1 = (ushort)sampleCount;
+                stream.Unk1.Codec = codecType;
+            }
+            else
+            {
+                stream.StreamFormat.Samples = sampleCount;
+                stream.StreamFormat.SamplesPerSecond = (ushort)sampleRate;
+                stream.StreamFormat.Codec = codecType;
+            }
+
+            stream.Chunks = chunks.ToArray();
+
+            if (stream.DataChunk == null)
+            {
+                stream.DataChunk = new AwcDataChunk(new AwcChunkInfo() { Type = AwcChunkType.data });
+            }
+            stream.DataChunk.Data = pcmAudioData;
+        }
+
+        public void ReplaceVorbis(ref AwcStream stream, uint sampleCount, uint sampleRate, byte[] pcmAudioData, bool isStereo = false)
+        {
+            throw new NotImplementedException("Vorbis support is not implemented");
+        }
 
         public AwcChunk[] GetSortedChunks()
         {
@@ -492,9 +682,9 @@ namespace CodeWalker.GameFiles
 
             foreach (var stream in Streams)
             {
-                if (stream.FormatChunk == null && stream.Unk1 == null)
+                if (stream.Unk1 == null)
                 { continue; } // peak chunk is always null here
-                if (stream.FormatChunk?.Peak == null && stream.Unk1 == null)
+                if (stream.Unk1?.Peak == null)
                 { continue; } //rare, only in boar_near.awc
                 //if (stream.FormatChunk.PeakUnk != 0)
                 //{ }//some hits??
@@ -502,8 +692,8 @@ namespace CodeWalker.GameFiles
                 //{ }//no hit
 
                 var pcmData = stream.GetPcmData();
-                var codec = stream.FormatChunk?.Codec ?? stream.Unk1.Codec;
-                var smpCount = stream.FormatChunk?.Samples ?? stream.Unk1.Samples;
+                var codec = stream.Unk1.Codec;
+                var smpCount = stream.Unk1.Samples;
                 //var peak0 = stream.FormatChunk.PeakVal;//orig value for comparison
                 //var peakvals0 = stream.PeakChunk?.Data;//orig values for comparison
                 var peakSize = 4096;
@@ -532,7 +722,7 @@ namespace CodeWalker.GameFiles
                 }
 
                 var peak = getPeak(0);
-                stream.FormatChunk.PeakVal = peak;
+                stream.Unk1.PeakVal = peak;
 
 
                 //// testing
@@ -903,6 +1093,11 @@ namespace CodeWalker.GameFiles
                 else
                 {
                     Hash = JenkHash.GenHash(value);
+                }
+
+                if (StreamFormat != null)
+                {
+                    StreamFormat.Id = Hash;
                 }
             }
         }
@@ -2950,7 +3145,9 @@ namespace CodeWalker.GameFiles
         public ushort PlayEnd { get; set; }
         public ushort PlayBegin { get; set; }
         public int Unk2 { get; set; }
-        public ushort Unk3 { get; set; }
+        public ushort? Peak { get; set; }
+        public ushort PeakVal { get { return (ushort)((Peak ?? 0) & 0xFFFF); } set { Peak = (ushort?)(((Peak ?? 0) & 0xFFFF0000) + value); } }
+        public ushort PeakUnk { get { return (ushort)((Peak ?? 0) >> 16); } set { Peak = (ushort?)(((Peak ?? 0) & 0xFFFF) + (ushort)(value << 16)); } }
         public AwcCodecType Codec { get; set; }
         public ushort Unk4 { get; set; }
 
@@ -2971,7 +3168,7 @@ namespace CodeWalker.GameFiles
             PlayEnd = r.ReadUInt16();
             PlayBegin = r.ReadUInt16();
             Unk2 = r.ReadInt32();
-            Unk3 = r.ReadUInt16();
+            Peak = r.ReadUInt16();
             Codec = (AwcCodecType)r.ReadInt16();
             Unk4 = r.ReadUInt16();
         }
@@ -2988,7 +3185,7 @@ namespace CodeWalker.GameFiles
             w.Write(PlayEnd);
             w.Write(PlayBegin);
             w.Write(Unk2);
-            w.Write(Unk3);
+            w.Write(Peak.Value);
             w.Write((short)Codec);
             w.Write(Unk4);
         }
@@ -3007,7 +3204,7 @@ namespace CodeWalker.GameFiles
             AwcXml.ValueTag(sb, indent, "LoopPoint", LoopPoint.ToString());
             AwcXml.ValueTag(sb, indent, "Unk1", Unk1.ToString());
             AwcXml.ValueTag(sb, indent, "Unk2", Unk2.ToString());
-            AwcXml.ValueTag(sb, indent, "Unk3", Unk3.ToString());
+            AwcXml.ValueTag(sb, indent, "Unk3", Peak.ToString());
             AwcXml.ValueTag(sb, indent, "Unk4", Unk4.ToString());
         }
 
@@ -3024,7 +3221,7 @@ namespace CodeWalker.GameFiles
             LoopPoint = Xml.GetChildIntAttribute(node, "LoopPoint");
             Unk1 = (ushort)Xml.GetChildUIntAttribute(node, "Unk1");
             Unk2 = Xml.GetChildIntAttribute(node, "Unk2");
-            Unk3 = (ushort)Xml.GetChildUIntAttribute(node, "Unk3");
+            Peak = (ushort)Xml.GetChildUIntAttribute(node, "Unk3");
             Unk4 = (ushort)Xml.GetChildUIntAttribute(node, "Unk4");
         }
 

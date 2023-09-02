@@ -38,7 +38,7 @@ namespace RDR2AudioTool
             {
                 try
                 {
-                    var _ = (uint)new System.ComponentModel.UInt32Converter().ConvertFromString(NameTextbox.Text);
+                    var _ = (uint)new UInt32Converter().ConvertFromString(NameTextbox.Text);
                 }
                 catch (ArgumentException)
                 { 

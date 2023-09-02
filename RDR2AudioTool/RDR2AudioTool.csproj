@@ -11,12 +11,12 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Title>RDR 2 Audio Tool</Title>
     <IsPublishable>True</IsPublishable>
-	<Company>WesternGamer</Company>
+		<Company>WesternGamer</Company>
         <Copyright>© WesternGamer 2023</Copyright>
         <Description>Tool to edit RDR2 AWC files.</Description>
         <Product>RDR 2 Audio Tool</Product>
         <AssemblyTitle>RDR2AudioTool</AssemblyTitle>
-        <Version>0.1.0</Version>
+        <Version>0.2.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,6 +34,10 @@
       <HintPath>..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Windows.Forms.dll</HintPath>
     </Reference>
   </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="copy &quot;..\strings.txt&quot; &quot;$(OutDir)&quot;" />
+  </Target>
 
  
 

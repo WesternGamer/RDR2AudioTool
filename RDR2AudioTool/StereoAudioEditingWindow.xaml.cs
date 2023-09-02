@@ -98,8 +98,6 @@ namespace RDR2AudioTool
 
             var dialogResult = dialog.ShowDialog();
 
-
-
             if (dialogResult == true)
             {
                 if ((bool)(Awc?.MultiChannelFlag))
@@ -183,65 +181,13 @@ namespace RDR2AudioTool
 
             if (result == true)
             {
-                Awc.ChunkIndicesFlag = false;
-                Awc.ChunkIndices = null;
-
+                //Awc.ChunkIndicesFlag = false;
+                //Awc.ChunkIndices = null;
 
                 if (Awc?.Streams != null)
                 {
-                    for (int c = 0; c < Awc.Streams.Length; c++)
-                    {
-                        if (Awc.Streams[c].Hash != 0)
-                        {
-                            if (Awc.Streams[c].Name.EndsWith("_left") || Awc.Streams[c].Name.EndsWith("_right"))
-                            {
-                                if ((window.CodecType == AwcCodecType.PCM) || (window.CodecType == AwcCodecType.ADPCM))
-                                {
-                                    if (Awc.Streams[c].VorbisChunk != null)
-                                    {
-                                        Awc.Streams[c].VorbisChunk = null;
-                                    }
-
-                                    List<AwcChunk> chunks = Awc.Streams[c].Chunks.ToList();
-
-                                    for (int p = 0; p < chunks.Count; p++)
-                                    {
-                                        if (chunks[p].GetType() == typeof(AwcVorbisChunk))
-                                        {
-                                            chunks.Remove(chunks[p]);
-                                        }
-                                    }
-                                    chunks.ToArray();
-
-                                    Awc.Streams[c].Chunks = chunks.ToArray();
-                                }
-
-                                byte[] data = null;
-
-                                if (Awc.Streams[c].Name.EndsWith("_left"))
-                                {
-                                    data = window.PcmDataLeft;
-                                }
-                                else if (Awc.Streams[c].Name.EndsWith("_right"))
-                                {
-                                    data = window.PcmDataRight;
-                                }
-
-                                Awc.Streams[c].StreamFormat.Samples = (uint)(window.SampleCount / 2);
-                                Awc.Streams[c].StreamFormat.SamplesPerSecond = (ushort)window.SampleRate;
-                                Awc.Streams[c].StreamFormat.Codec = window.CodecType;
-
-                                Awc.Streams[c].DataChunk = new AwcDataChunk(null);
-                                Awc.Streams[c].DataChunk.Data = data;
-
-                            }
-
-
-
-                        }
-                    }
+                    Awc?.ReplaceAudioStream(null, (uint)(window.SampleCount / 2), (uint)window.SampleRate, window.PcmData, window.CodecType);
                 }
-
             }
 
 

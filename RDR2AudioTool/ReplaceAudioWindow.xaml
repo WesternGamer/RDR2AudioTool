@@ -10,11 +10,8 @@
         <Label Content="File:" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
         <TextBox x:Name="FileTextBox" HorizontalAlignment="Left" Margin="41,14,0,0" TextWrapping="NoWrap" VerticalAlignment="Top" Width="374" AcceptsReturn="False"/>
         <Label Content="Codec:" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top"/>
-        <ComboBox x:Name="CodecSelectionBox" HorizontalAlignment="Left" Margin="61,43,0,0" VerticalAlignment="Top" Width="120" SelectionChanged="CodecSelectionBox_SelectionChanged">
-            <ComboBoxItem Content="PCM"/>
-            <ComboBoxItem Content="ADPCM"/>
-            <ComboBoxItem Content="VORBIS"/>
-        </ComboBox>
+        <ComboBox x:Name="CodecSelectionBox" HorizontalAlignment="Left" Margin="61,43,0,0" VerticalAlignment="Top" Width="120" SelectionChanged="CodecSelectionBox_SelectionChanged"/>
+
         <Button x:Name="ReplaceButton" Content="Replace" HorizontalAlignment="Left" Margin="194,45,0,0" VerticalAlignment="Top" Width="120" Click="ReplaceButton_Click"/>
         <Button x:Name="CancelButton" Content="Cancel" HorizontalAlignment="Left" Margin="326,46,0,0" VerticalAlignment="Top" Width="120" Click="CancelButton_Click"/>
         <Button Content="..." HorizontalAlignment="Left" Margin="423,14,0,0" VerticalAlignment="Top" Width="23" Click="Button_Click"/>
