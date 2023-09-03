@@ -173,21 +173,45 @@ namespace RDR2AudioTool
 
             if (Awc?.Streams != null)
             {
+                List<AwcStream> hashStreams = new List<AwcStream>();
+                List<AwcStream> nameStreams = new List<AwcStream>();
+
                 var strlist = Awc.Streams.ToList();
                 foreach (var audio in strlist)
+                {
+                    if (audio.Name.StartsWith("0x"))
+                    {
+                        hashStreams.Add(audio);
+                    }
+                    else
+                    {
+                        nameStreams.Add(audio);
+                    }
+                }
+
+                hashStreams.Sort((a, b) => a.Hash.Hash.CompareTo(b.Hash.Hash));
+                nameStreams.Sort(new AlphanumericComparer());
+
+                foreach (var audio in hashStreams)
                 {
                     var stereo = (audio.ChannelStreams?.Length == 2);
                     if ((audio.StreamBlocks != null) && (!stereo)) continue;//don't display multichannel source audios
                     var name = audio.Name;
                     if (stereo) continue; // name = "(Stereo Playback)";
 
-                    if (!name.StartsWith("0x"))
-                    {
-                        name = name + $" (0x{audio.Hash})";
-                    }
-
-                    var item = StreamList.Items.Add(new ItemInfo(name, audio.Type, audio.LengthStr, TextUtil.GetBytesReadable(audio.ByteLength), audio));
+                    StreamList.Items.Add(new ItemInfo(name, audio.Type, audio.LengthStr, TextUtil.GetBytesReadable(audio.ByteLength), audio));
                 }
+
+                foreach (var audio in nameStreams)
+                {
+                    var stereo = (audio.ChannelStreams?.Length == 2);
+                    if ((audio.StreamBlocks != null) && (!stereo)) continue;//don't display multichannel source audios
+                    var name = audio.Name + $" (0x{audio.Hash})";
+                    if (stereo) continue; // name = "(Stereo Playback)";
+
+                    StreamList.Items.Add(new ItemInfo(name, audio.Type, audio.LengthStr, TextUtil.GetBytesReadable(audio.ByteLength), audio));
+                }
+
                 SaveButton.IsEnabled = true;
                 RenameButton.IsEnabled = true;
                 ReplaceButton.IsEnabled = true;
