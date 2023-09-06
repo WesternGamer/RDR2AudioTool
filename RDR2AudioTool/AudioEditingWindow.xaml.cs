@@ -62,7 +62,7 @@ namespace RDR2AudioTool
             InitializeComponent();
             timer = new System.Windows.Threading.DispatcherTimer();
             timer.Tick += new EventHandler(timer_Tick);
-            timer.Interval = TimeSpan.FromMilliseconds(10); // Update the slider every 100 milliseconds
+            timer.Interval = TimeSpan.FromMilliseconds(10); // update the slider every 10 milliseconds so it has like a smooth slide
             TimeSpan timerInterval = timer.Interval;
         }
         private void waveOut_PlaybackStopped(object sender, StoppedEventArgs e)
