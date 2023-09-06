@@ -25,12 +25,12 @@
         <Button x:Name="ReplaceButton" Content="Replace Track" HorizontalAlignment="Left" VerticalAlignment="Top" Height="24" Width="100" Margin="321,0,0,0" IsEnabled="False" Foreground="White" BorderBrush="#FF424242" Background="#FF1F1F1F" Click="ReplaceButton_Click"/>
         <Button x:Name="MoreOptionsButton" Content="More Options" HorizontalAlignment="Left" VerticalAlignment="Top" Height="24" Width="100" Margin="521,0,0,0" RenderTransformOrigin="0.135,0.585" IsEnabled="False" Foreground="White" BorderBrush="#FF424242" Background="#FF1F1F1F"/>
         <Rectangle HorizontalAlignment="Left" Height="24" Margin="215,0,0,0" Stroke="#FF424242" VerticalAlignment="Top" Width="1" Fill="#FF424242"/>
-        <Label x:Name="DurationLabel" Content="DurationLabel" HorizontalAlignment="Left" Margin="10,0,0,15" VerticalAlignment="Bottom"/>
-        <Button Content="⏮" HorizontalAlignment="Center" Margin="-85,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" IsEnabled="False"/>
-        <Button Content="⏵" HorizontalAlignment="Center" Margin="15,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" IsEnabled="False"/>
-        <Button Content="⏭" HorizontalAlignment="Center" Margin="115,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" IsEnabled="False"/>
+        <Label x:Name="DurationLabel" Content="00:00" HorizontalAlignment="Left" Margin="10,0,0,15" VerticalAlignment="Bottom"/>
+        <Button x:Name="PlayLastButton" Content="⏮" HorizontalAlignment="Center" Margin="-85,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayLastButton_Click"/>
+        <Button x:Name="PlayButton" Content="⏵" HorizontalAlignment="Center" Margin="15,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayButton_Click"/>
+        <Button x:Name="PlayNextButton" Content="⏭" HorizontalAlignment="Center" Margin="115,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayNextButton_Click"/>
         <DockPanel DockPanel.Dock="Bottom" LastChildFill="True" Margin="10">
-            <Slider HorizontalAlignment="Stretch" Margin="0,0,0,45" VerticalAlignment="Bottom" IsEnabled="False"/>
+            <Slider x:Name="slider" HorizontalAlignment="Stretch" Margin="0,0,0,45" VerticalAlignment="Bottom" IsEnabled="False" ValueChanged="Slider_ValueChanged"/>
         </DockPanel>
     </Grid>
 </Window>

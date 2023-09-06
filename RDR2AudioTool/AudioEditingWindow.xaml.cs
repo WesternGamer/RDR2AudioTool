@@ -9,20 +9,31 @@ using System.Linq;
 using System.Windows;
 
 
+
 namespace RDR2AudioTool
 {
-    
+
 
 
 
     /// <summary>
     /// Interaction logic for AudioEditingWindow.xaml
     /// </summary>
+    /// 
+
     public partial class AudioEditingWindow : Window
     {
         AwcFile? Awc = null;
 
+
+        private System.Windows.Threading.DispatcherTimer timer;
+
         WaveOut waveOut = null;
+
+        private int currentPlayingIndex = -1;
+
+        private TimeSpan timerInterval;
+        private bool isPaused = false;
 
         public class ItemInfo
         {
@@ -47,9 +58,27 @@ namespace RDR2AudioTool
             //Loaded += delegate (object sender, RoutedEventArgs e) { this.Owner.Hide(); };
             //Closed += delegate (object? sender, EventArgs e) { this.Owner.Close(); };
             waveOut = new WaveOut();
+            waveOut.PlaybackStopped += waveOut_PlaybackStopped;
             InitializeComponent();
+            timer = new System.Windows.Threading.DispatcherTimer();
+            timer.Tick += new EventHandler(timer_Tick);
+            timer.Interval = TimeSpan.FromMilliseconds(10); // Update the slider every 100 milliseconds
+            TimeSpan timerInterval = timer.Interval;
         }
-
+        private void waveOut_PlaybackStopped(object sender, StoppedEventArgs e)
+        {
+            if (waveOut.PlaybackState == PlaybackState.Stopped)
+            {
+                //basically at this point the playback has stopped so we want to reset the slider for it to look nice 😋
+                this.Dispatcher.Invoke(() =>
+                {
+                    slider.Value = slider.Minimum;
+                    DurationLabel.Content = "00:00";
+                    /*PlayButton.Content = "▶";
+                    PlayButton.Click += new RoutedEventHandler(PlayButton_Click);*/
+                });
+            }
+        }
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             var fbd = new Microsoft.Win32.OpenFileDialog();
@@ -77,7 +106,7 @@ namespace RDR2AudioTool
                 SaveButton.IsEnabled = false;
                 RenameButton.IsEnabled = false;
                 ReplaceButton.IsEnabled = false;
-                DeleteButton.IsEnabled = false; 
+                DeleteButton.IsEnabled = false;
                 MoreOptionsButton.IsEnabled = false;
             }
 
@@ -124,7 +153,7 @@ namespace RDR2AudioTool
                 {
                     name = Awc.Streams[1].Name.Substring(0, Awc.Streams[1].Name.Length - 6);
                 }
-                else 
+                else
                 {
                     name = "";
                 }
@@ -263,48 +292,119 @@ namespace RDR2AudioTool
 
         private void Play()
         {
+            if (isPaused)
+            {
+                waveOut.Play();
+                isPaused = false;
+                return;
+            }
+
+            /*PlayButton.Content = "⏸";
+            PlayButton.Click += new RoutedEventHandler(PauseButton_Click);*/
+
             Stop();
 
             if (StreamList.SelectedItems.Count == 1)
             {
                 var item = StreamList.SelectedItems[0] as ItemInfo;
-
                 var audio = item.Stream;
 
                 IWaveProvider provider = new RawSourceWaveStream(new MemoryStream(audio.GetRawData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
 
                 waveOut.Init(provider);
                 waveOut.Play();
+                timer.Start();
+
+                double totalDuration = audio.Length; //this is how we make sure that the bar length is equal to the duration so that it properly goes from start to finish
+                slider.Maximum = totalDuration;
+                slider.Value = 0;
             }
-
-
         }
-
+        //might update in the future but its really not needed I don't think.
         private void Pause()
         {
-
+            if (waveOut.PlaybackState == PlaybackState.Playing)
+            {
+                waveOut.Pause();
+                isPaused = true;
+                PlayButton.Content = "▶";
+                PlayButton.Click += new RoutedEventHandler(PlayButton_Click);
+            }
         }
 
         private void Stop()
         {
-
+            if (waveOut.PlaybackState == PlaybackState.Playing)
+            {
+                waveOut.Stop();
+                waveOut.Dispose();
+                waveOut = new WaveOut();
+            }
+            timer.Stop();
         }
 
         private void PlayNext()
         {
-
+            Stop();
+            if (currentPlayingIndex < StreamList.Items.Count - 1)
+            {
+                currentPlayingIndex++;
+                StreamList.SelectedIndex = currentPlayingIndex;
+                Play();
+            }
         }
 
         private void PlayLast()
         {
             Stop();
-            var nextIndex = StreamList.SelectedIndex - 1;
-            if (nextIndex < StreamList.Items.Count)
+            if (currentPlayingIndex > 0)
             {
-                //StreamList.Items[nextIndex].Selected = true;
-                //StreamList.Items[nextIndex].Focused = true;
+                currentPlayingIndex--;
+                StreamList.SelectedIndex = currentPlayingIndex;
                 Play();
             }
+        }
+
+        private void timer_Tick(object sender, EventArgs e)
+        {
+            if (waveOut.PlaybackState == PlaybackState.Playing)
+            {
+
+                double currentPosition = waveOut.GetPosition() / (double)waveOut.OutputWaveFormat.AverageBytesPerSecond;
+                slider.Value = currentPosition;
+
+                TimeSpan currentTime = TimeSpan.FromSeconds(currentPosition);
+                DurationLabel.Content = currentTime.ToString(@"mm\:ss"); //00:00
+            }
+        }
+
+        private void MoreOptionsButton_Copy_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void PlayButton_Click(object sender, RoutedEventArgs e)
+        {
+            Play();
+        }
+
+        private void PlayLastButton_Click(object sender, RoutedEventArgs e)
+        {
+            PlayLast();
+        }
+
+        private void PlayNextButton_Click(object sender, RoutedEventArgs e)
+        {
+            PlayNext();
+        }
+        private void PauseButton_Click(object sender, RoutedEventArgs e)
+        {
+            Pause();
+        }
+
+        private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+
         }
     }
 }
