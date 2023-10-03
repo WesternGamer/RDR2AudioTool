@@ -428,8 +428,7 @@ namespace RDR2AudioTool
         {
             if (e.Source is TabControl tabControl)
             {
-                // Check which tab is currently selected
-                if (tabControl.SelectedItem == AwcPlayerTab)
+                if (tabControl.SelectedItem == AwcPlayerTab) //check which tab is currently selected, more specifically if it's the player tab.  We do this to refresh the list when they switch back
                 {
                     RefreshList();
                 }
