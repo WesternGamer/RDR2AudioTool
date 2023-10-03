@@ -1,14 +1,16 @@
-﻿
+
 using CodeWalker;
 using CodeWalker.GameFiles;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
-
-
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Threading;
 
 namespace RDR2AudioTool
 {
@@ -53,6 +55,8 @@ namespace RDR2AudioTool
             }
         }
 
+        private ItemInfo currentItem = null;
+
         public AudioEditingWindow()
         {
             //Loaded += delegate (object sender, RoutedEventArgs e) { this.Owner.Hide(); };
@@ -60,10 +64,12 @@ namespace RDR2AudioTool
             waveOut = new WaveOut();
             waveOut.PlaybackStopped += waveOut_PlaybackStopped;
             InitializeComponent();
-            timer = new System.Windows.Threading.DispatcherTimer();
+            timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Render); //smoother slide
             timer.Tick += new EventHandler(timer_Tick);
             timer.Interval = TimeSpan.FromMilliseconds(10); // update the slider every 10 milliseconds so it has like a smooth slide
             TimeSpan timerInterval = timer.Interval;
+            VolumeResetButton.IsEnabled = false;
+            VolumeSlider.IsEnabled = false;
         }
         private void waveOut_PlaybackStopped(object sender, StoppedEventArgs e)
         {
@@ -73,7 +79,12 @@ namespace RDR2AudioTool
                 this.Dispatcher.Invoke(() =>
                 {
                     slider.Value = slider.Minimum;
-                    DurationLabel.Content = "00:00";
+                    if (StreamList.SelectedItems.Count == 1)
+                    {
+                        currentItem = StreamList.SelectedItems[0] as ItemInfo;
+                        TimeSpan durationTime = TimeSpan.FromSeconds(currentItem.Stream.Length);
+                        DurationLabel.Content = $"00:00 / {durationTime.ToString(@"mm\:ss")}"; //change 00:00 to the actual length of the audio 
+                    }
                     /*PlayButton.Content = "▶";
                     PlayButton.Click += new RoutedEventHandler(PlayButton_Click);*/
                 });
@@ -82,6 +93,8 @@ namespace RDR2AudioTool
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             var fbd = new Microsoft.Win32.OpenFileDialog();
+
+            fbd.Filter = "Audio Wave Container (.awc)|*.awc";
 
             if (fbd.ShowDialog() == true && !string.IsNullOrWhiteSpace(fbd.FileName))
             {
@@ -94,6 +107,9 @@ namespace RDR2AudioTool
 
                         Awc = new AwcFile();
                         Awc.Load(memoryStream.ToArray(), System.IO.Path.GetFileName(fbd.FileName));
+                        Title = $"AudioEditingWindow - {System.IO.Path.GetFileName(fbd.FileName)}";
+                        VolumeResetButton.IsEnabled = true;
+                        VolumeSlider.IsEnabled = true;
 
                         RefreshList();
                     }
@@ -308,13 +324,13 @@ namespace RDR2AudioTool
             {
                 var item = StreamList.SelectedItems[0] as ItemInfo;
                 var audio = item.Stream;
-
+                currentItem = item;
                 IWaveProvider provider = new RawSourceWaveStream(new MemoryStream(audio.GetRawData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
 
                 waveOut.Init(provider);
                 waveOut.Play();
                 timer.Start();
-
+                currentPlayingIndex = StreamList.SelectedIndex;
                 double totalDuration = audio.Length; //this is how we make sure that the bar length is equal to the duration so that it properly goes from start to finish
                 slider.Maximum = totalDuration;
                 slider.Value = 0;
@@ -373,8 +389,9 @@ namespace RDR2AudioTool
                 double currentPosition = waveOut.GetPosition() / (double)waveOut.OutputWaveFormat.AverageBytesPerSecond;
                 slider.Value = currentPosition;
 
+                TimeSpan durationTime = TimeSpan.FromSeconds(currentItem.Stream.Length);
                 TimeSpan currentTime = TimeSpan.FromSeconds(currentPosition);
-                DurationLabel.Content = currentTime.ToString(@"mm\:ss"); //00:00
+                DurationLabel.Content = $"{currentTime.ToString(@"mm\:ss")} / {durationTime.ToString(@"mm\:ss")}"; //change 00:00 to the actual length of the audio 
             }
         }
 
@@ -406,5 +423,57 @@ namespace RDR2AudioTool
         {
 
         }
+
+        private void TabControl_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (e.Source is TabControl tabControl)
+            {
+                // Check which tab is currently selected
+                if (tabControl.SelectedItem == AwcPlayerTab)
+                {
+                    RefreshList();
+                }
+                else if (tabControl.SelectedItem == AwcXmlTab)
+                {
+                    AwcXmlTextBox.Text = AwcXml.GetXml(Awc);
+                }
+            }
+        }
+
+        private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (waveOut.PlaybackState == PlaybackState.Playing)
+            {
+                waveOut.Volume = (float)(VolumeSlider.Value / 100);
+            }
+        }
+
+        private void StreamList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (waveOut.PlaybackState != PlaybackState.Playing)
+            {
+                waveOut.Volume = .5f;
+                VolumeSlider.Value = 50;
+                if (StreamList.SelectedItems.Count == 1)
+                {
+                    currentItem = StreamList.SelectedItems[0] as ItemInfo;
+                    TimeSpan durationTime = TimeSpan.FromSeconds(currentItem.Stream.Length);
+                    DurationLabel.Content = $"00:00 / {durationTime.ToString(@"mm\:ss")}"; //change 00:00 to the actual length of the audio 
+                }
+            }
+        }
+
+        //reset button for volume slider but button looks shit so for now it's disabled
+        private void Button_Click_2(object sender, RoutedEventArgs e)
+        {
+            waveOut.Volume = .5f;
+            VolumeSlider.Value = 50;
+        }
+
+        /*private void FindButton_Click(object sender, RoutedEventArgs e)
+        {
+            FindDialog findDialog = new FindDialog(AwcXmlTextBox);
+            findDialog.ShowDialog();
+        }*/
     }
 }
