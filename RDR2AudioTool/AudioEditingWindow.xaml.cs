@@ -368,6 +368,12 @@ namespace RDR2AudioTool
                 StreamList.SelectedIndex = currentPlayingIndex;
                 Play();
             }
+            else
+            {
+                StreamList.SelectedIndex = 0;
+                currentPlayingIndex = 0;
+                Play();
+            }
         }
 
         private void PlayLast()
@@ -377,6 +383,12 @@ namespace RDR2AudioTool
             {
                 currentPlayingIndex--;
                 StreamList.SelectedIndex = currentPlayingIndex;
+                Play();
+            }
+            else if(currentPlayingIndex == 0)
+            {
+                currentPlayingIndex = StreamList.Items.Count - 1;
+                StreamList.SelectedIndex = StreamList.Items.Count - 1; 
                 Play();
             }
         }
