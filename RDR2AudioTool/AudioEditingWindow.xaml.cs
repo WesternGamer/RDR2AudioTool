@@ -12,6 +12,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Threading;
 
+
 namespace RDR2AudioTool
 {
 
@@ -165,6 +166,7 @@ namespace RDR2AudioTool
                 view.Refresh();
             }
         }
+        
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             var fbd = new Microsoft.Win32.OpenFileDialog();
@@ -410,7 +412,9 @@ namespace RDR2AudioTool
                 waveOut.Init(provider);
                 waveOut.Play();
                 timer.Start();
+
                 currentPlayingIndex = StreamList.SelectedIndex;
+
                 double totalDuration = audio.Length; //this is how we make sure that the bar length is equal to the duration so that it properly goes from start to finish
                 slider.Maximum = totalDuration;
                 slider.Value = 0;
@@ -591,6 +595,48 @@ namespace RDR2AudioTool
         private void loopAutoPlay_Unchecked(object sender, RoutedEventArgs e)
         {
             autoPlayLoopEnabled = false;
+        }
+
+        private void timer_Tick(object sender, EventArgs e)
+        {
+            if (waveOut.PlaybackState == PlaybackState.Playing)
+            {
+
+                double currentPosition = waveOut.GetPosition() / (double)waveOut.OutputWaveFormat.AverageBytesPerSecond;
+                slider.Value = currentPosition;
+
+                TimeSpan currentTime = TimeSpan.FromSeconds(currentPosition);
+                DurationLabel.Content = currentTime.ToString(@"mm\:ss"); //00:00
+            }
+        }
+
+        private void MoreOptionsButton_Copy_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void PlayButton_Click(object sender, RoutedEventArgs e)
+        {
+            Play();
+        }
+
+        private void PlayLastButton_Click(object sender, RoutedEventArgs e)
+        {
+            PlayLast();
+        }
+
+        private void PlayNextButton_Click(object sender, RoutedEventArgs e)
+        {
+            PlayNext();
+        }
+        private void PauseButton_Click(object sender, RoutedEventArgs e)
+        {
+            Pause();
+        }
+
+        private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+
         }
     }
 }
