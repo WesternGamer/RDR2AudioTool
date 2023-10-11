@@ -31,6 +31,8 @@ namespace RDR2AudioTool
         private System.Windows.Threading.DispatcherTimer timer;
         private GridViewColumn lastSortedColumn = new GridViewColumn();
         private ListSortDirection lastSortDirection = ListSortDirection.Ascending;
+        private bool autoPlayEnabled = false;
+        private bool autoPlayLoopEnabled = false;
 
         WaveOut waveOut = null;
 
@@ -75,15 +77,51 @@ namespace RDR2AudioTool
         {
             if (waveOut.PlaybackState == PlaybackState.Stopped)
             {
-                //basically at this point the playback has stopped so we want to reset the slider for it to look nice 😋
+                if (timer.IsEnabled)
+                {
+                    timer.Stop();
+                }
+                slider.Value = slider.Minimum;
                 this.Dispatcher.Invoke(() =>
                 {
-                    slider.Value = slider.Minimum;
-                    if (StreamList.SelectedItems.Count == 1)
+                    if (autoPlayEnabled)
                     {
-                        currentItem = StreamList.SelectedItems[0] as ItemInfo;
-                        TimeSpan durationTime = TimeSpan.FromSeconds(currentItem.Stream.Length);
-                        DurationLabel.Content = $"00:00 / {durationTime.ToString(@"mm\:ss")}"; //change 00:00 to the actual length of the audio 
+                        ItemInfo item = null;
+                        if ((currentPlayingIndex + 1) > (StreamList.Items.Count - 1) || currentPlayingIndex > (StreamList.Items.Count - 1))
+                        {
+                            if (autoPlayLoopEnabled)
+                            {
+                                currentPlayingIndex = 0;
+                                item = StreamList.Items[currentPlayingIndex] as ItemInfo;
+                            }
+                        }
+                        else if ((currentPlayingIndex + 1) <= (StreamList.Items.Count - 1))
+                        {
+                            currentPlayingIndex += 1;
+                            item = StreamList.Items[currentPlayingIndex] as ItemInfo;
+                        }
+
+                        if (item != null)
+                        {
+                            var audio = item.Stream;
+                            currentItem = item;
+                            IWaveProvider provider = null;
+                            if (audio.Type.Contains("ADPCM"))
+                            {
+                                provider = new RawSourceWaveStream(new MemoryStream(audio.GetPcmData()), new WaveFormat(audio.SamplesPerSecond, 1, 1));
+                            }
+                            else
+                            {
+                                provider = new RawSourceWaveStream(new MemoryStream(audio.GetRawData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
+                            }
+                            waveOut.Init(provider);
+                            waveOut.Play();
+                            timer.Start();
+                            StreamList.SelectedIndex = currentPlayingIndex;
+                            double totalDuration = audio.Length;
+                            slider.Maximum = totalDuration;
+                            slider.Value = 0;
+                        }
                     }
                 });
             }
@@ -297,6 +335,7 @@ namespace RDR2AudioTool
                 SaveButton.IsEnabled = true;
                 RenameButton.IsEnabled = true;
                 ReplaceButton.IsEnabled = true;
+                AutoPlayBox.IsEnabled = true;
                 //DeleteButton.IsEnabled = true;
                 //MoreOptionsButton.IsEnabled = true;
 
@@ -359,8 +398,15 @@ namespace RDR2AudioTool
                 var item = StreamList.SelectedItems[0] as ItemInfo;
                 var audio = item.Stream;
                 currentItem = item;
-                IWaveProvider provider = new RawSourceWaveStream(new MemoryStream(audio.GetRawData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
-
+                IWaveProvider provider = null;
+                if (audio.Type.Contains("ADPCM"))
+                {
+                    provider = new RawSourceWaveStream(new MemoryStream(audio.GetPcmData()), new WaveFormat(audio.SamplesPerSecond, 1, 1));
+                }
+                else
+                {
+                    provider = new RawSourceWaveStream(new MemoryStream(audio.GetRawData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
+                }
                 waveOut.Init(provider);
                 waveOut.Play();
                 timer.Start();
@@ -513,6 +559,29 @@ namespace RDR2AudioTool
         {
             waveOut.Volume = .5f;
             VolumeSlider.Value = 50;
+        }
+
+        private void autoPlay_Checked(object sender, RoutedEventArgs e)
+        {
+            autoPlayEnabled = true;
+            LoopAutoPlay.IsEnabled = true;
+        }
+
+        private void autoPlay_Unchecked(object sender, RoutedEventArgs e)
+        {
+            autoPlayEnabled = false;
+            autoPlayLoopEnabled = false;
+            LoopAutoPlay.IsEnabled = false;
+        }
+
+        private void loopAutoPlay_Checked(object sender, RoutedEventArgs e)
+        {
+            autoPlayLoopEnabled = true;
+        }
+
+        private void loopAutoPlay_Unchecked(object sender, RoutedEventArgs e)
+        {
+            autoPlayLoopEnabled = false;
         }
     }
 }
