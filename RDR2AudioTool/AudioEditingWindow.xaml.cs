@@ -108,7 +108,7 @@ namespace RDR2AudioTool
                             IWaveProvider provider = null;
                             if (audio.Type.Contains("ADPCM"))
                             {
-                                provider = new RawSourceWaveStream(new MemoryStream(audio.GetPcmData()), new WaveFormat(audio.SamplesPerSecond, 1, 1));
+                                provider = new RawSourceWaveStream(new MemoryStream(audio.GetPcmData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
                             }
                             else
                             {
@@ -401,7 +401,7 @@ namespace RDR2AudioTool
                 IWaveProvider provider = null;
                 if (audio.Type.Contains("ADPCM"))
                 {
-                    provider = new RawSourceWaveStream(new MemoryStream(audio.GetPcmData()), new WaveFormat(audio.SamplesPerSecond, 1, 1));
+                    provider = new RawSourceWaveStream(new MemoryStream(audio.GetPcmData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
                 }
                 else
                 {
