@@ -29,6 +29,8 @@ namespace RDR2AudioTool
 
 
         private System.Windows.Threading.DispatcherTimer timer;
+        private GridViewColumn lastSortedColumn = new GridViewColumn();
+        private ListSortDirection lastSortDirection = ListSortDirection.Ascending;
 
         WaveOut waveOut = null;
 
@@ -59,8 +61,6 @@ namespace RDR2AudioTool
 
         public AudioEditingWindow()
         {
-            //Loaded += delegate (object sender, RoutedEventArgs e) { this.Owner.Hide(); };
-            //Closed += delegate (object? sender, EventArgs e) { this.Owner.Close(); };
             waveOut = new WaveOut();
             waveOut.PlaybackStopped += waveOut_PlaybackStopped;
             InitializeComponent();
@@ -85,9 +85,46 @@ namespace RDR2AudioTool
                         TimeSpan durationTime = TimeSpan.FromSeconds(currentItem.Stream.Length);
                         DurationLabel.Content = $"00:00 / {durationTime.ToString(@"mm\:ss")}"; //change 00:00 to the actual length of the audio 
                     }
-                    /*PlayButton.Content = "▶";
-                    PlayButton.Click += new RoutedEventHandler(PlayButton_Click);*/
                 });
+            }
+        }
+
+        private void GridViewColumnHeader_Click(object sender, RoutedEventArgs e)
+        {
+            GridViewColumnHeader column = (GridViewColumnHeader)sender;
+            string tag = column.Tag as string;
+
+            if (lastSortedColumn != null && lastSortedColumn.Header != column)
+            {
+                lastSortedColumn.HeaderTemplate = null;
+            }
+
+            ListSortDirection direction = ListSortDirection.Ascending;
+            if (column != lastSortedColumn.Header)
+            {
+                direction = ListSortDirection.Ascending;
+                column.Column.HeaderTemplate = Resources["HeaderTemplateArrowUp"] as DataTemplate;
+            }
+            else
+            {
+                direction = (lastSortDirection == ListSortDirection.Ascending) ? ListSortDirection.Descending : ListSortDirection.Ascending;
+                column.Column.HeaderTemplate = (direction == ListSortDirection.Ascending) ? Resources["HeaderTemplateArrowUp"] as DataTemplate : Resources["HeaderTemplateArrowDown"] as DataTemplate; //this works for now, would like for arrow to be above/below column name, but thats for the future.
+            }
+
+            lastSortedColumn = column.Column;
+            lastSortDirection = direction;
+            SortListView(tag, direction);
+        }
+
+        private void SortListView(string tag, ListSortDirection direction)
+        {
+            ICollectionView view = CollectionViewSource.GetDefaultView(StreamList.Items); //we use StreamList.Items because in RefreshList we set StreamList.ItemsSource to null so passing that in to this will do nothing!!
+
+            if (view != null)
+            {
+                view.SortDescriptions.Clear();
+                view.SortDescriptions.Add(new SortDescription(tag, direction));
+                view.Refresh();
             }
         }
         private void Button_Click(object sender, RoutedEventArgs e)
@@ -315,9 +352,6 @@ namespace RDR2AudioTool
                 return;
             }
 
-            /*PlayButton.Content = "⏸";
-            PlayButton.Click += new RoutedEventHandler(PauseButton_Click);*/
-
             Stop();
 
             if (StreamList.SelectedItems.Count == 1)
@@ -480,11 +514,5 @@ namespace RDR2AudioTool
             waveOut.Volume = .5f;
             VolumeSlider.Value = 50;
         }
-
-        /*private void FindButton_Click(object sender, RoutedEventArgs e)
-        {
-            FindDialog findDialog = new FindDialog(AwcXmlTextBox);
-            findDialog.ShowDialog();
-        }*/
     }
 }
