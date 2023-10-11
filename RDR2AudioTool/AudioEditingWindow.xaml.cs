@@ -596,47 +596,5 @@ namespace RDR2AudioTool
         {
             autoPlayLoopEnabled = false;
         }
-
-        private void timer_Tick(object sender, EventArgs e)
-        {
-            if (waveOut.PlaybackState == PlaybackState.Playing)
-            {
-
-                double currentPosition = waveOut.GetPosition() / (double)waveOut.OutputWaveFormat.AverageBytesPerSecond;
-                slider.Value = currentPosition;
-
-                TimeSpan currentTime = TimeSpan.FromSeconds(currentPosition);
-                DurationLabel.Content = currentTime.ToString(@"mm\:ss"); //00:00
-            }
-        }
-
-        private void MoreOptionsButton_Copy_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
-
-        private void PlayButton_Click(object sender, RoutedEventArgs e)
-        {
-            Play();
-        }
-
-        private void PlayLastButton_Click(object sender, RoutedEventArgs e)
-        {
-            PlayLast();
-        }
-
-        private void PlayNextButton_Click(object sender, RoutedEventArgs e)
-        {
-            PlayNext();
-        }
-        private void PauseButton_Click(object sender, RoutedEventArgs e)
-        {
-            Pause();
-        }
-
-        private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-
-        }
     }
 }
