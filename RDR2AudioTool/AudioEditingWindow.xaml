@@ -14,10 +14,38 @@
                     <ListView x:Name="StreamList" Margin="10,32,10,85" SelectionChanged="StreamList_SelectionChanged">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="Name" Width="350" DisplayMemberBinding="{Binding Name}"/>
-                                <GridViewColumn Header="Type" Width="125" DisplayMemberBinding="{Binding Type}"/>
-                                <GridViewColumn Header="Length" Width="75" DisplayMemberBinding="{Binding Length}"/>
-                                <GridViewColumn Header="Size" Width="75" DisplayMemberBinding="{Binding Size}"/>
+                                <GridViewColumn Width="350">
+                                    <GridViewColumnHeader Content="Name" Click="GridViewColumnHeader_Click" Tag="Name" />
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Name}" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Width="125">
+                                    <GridViewColumnHeader Content="Type" Click="GridViewColumnHeader_Click" Tag="Type" />
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Type}" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Width="75">
+                                    <GridViewColumnHeader Content="Length" Click="GridViewColumnHeader_Click" Tag="Length" />
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Length}" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Width="75">
+                                    <GridViewColumnHeader Content="Size" Click="GridViewColumnHeader_Click" Tag="Size" />
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Size}" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                             </GridView>
                         </ListView.View>
                     </ListView>
@@ -48,4 +76,13 @@
             </TabItem>
         </TabControl>
     </Grid>
+
+    <Window.Resources>
+        <DataTemplate x:Key="HeaderTemplateArrowUp">
+            <TextBlock Text="▲"/>
+        </DataTemplate>
+        <DataTemplate x:Key="HeaderTemplateArrowDown">
+            <TextBlock Text="▼"/>
+        </DataTemplate>
+    </Window.Resources>
 </Window>
