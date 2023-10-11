@@ -536,6 +536,14 @@ namespace RDR2AudioTool
             if (waveOut.PlaybackState == PlaybackState.Playing)
             {
                 waveOut.Volume = (float)(VolumeSlider.Value / 100);
+
+            }
+            if(VolumeLabel != null)
+            {
+                if(VolumeLabel.Content != null)
+                {
+                    VolumeLabel.Content = VolumeSlider.Value.ToString();
+                }
             }
         }
 
