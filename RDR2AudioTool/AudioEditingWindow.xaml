@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RDR2AudioTool"
         mc:Ignorable="d"
-        Title="AudioEditingWindow" Height="532" Width="800" Background="#FF1F1F1F" Style="{DynamicResource CustomWindowStyle}">
+        Title="AudioEditingWindow" Height="532" Width="800" Background="#FF1F1F1F" Style="{StaticResource CustomWindowStyle}">
     <Grid Margin="0,10,0,0">
 
         <TabControl SelectionChanged="TabControl_SelectionChanged">
@@ -68,7 +68,8 @@
                     <DockPanel DockPanel.Dock="Bottom" LastChildFill="True" Margin="10">
                         <Slider x:Name="VolumeSlider" Width="150" Height="20" Margin="0,0,0,8" HorizontalAlignment="Right" VerticalAlignment="Bottom" Value="50" ValueChanged="VolumeSlider_ValueChanged"/>
                     </DockPanel>
-                    <Button x:Name="VolumeResetButton" Content="🔄" HorizontalAlignment="Right" Margin="0,0,160,18" VerticalAlignment="Bottom" Height="20" Width="20" Click="Button_Click_2"/>
+                    <Button x:Name="VolumeResetButton" Content="🔄" HorizontalAlignment="Right" Margin="0,0,190,18" VerticalAlignment="Bottom" Height="20" Width="20" Click="Button_Click_2"/>
+                    <Label x:Name="VolumeLabel" Content="50" HorizontalAlignment="Right" Margin="0,0,160,15" VerticalAlignment="Bottom" />
                 </Grid>
             </TabItem>
             <TabItem x:Name="AwcXmlTab" Header="XML">
