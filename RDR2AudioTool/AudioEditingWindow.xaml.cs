@@ -572,6 +572,7 @@ namespace RDR2AudioTool
             autoPlayEnabled = false;
             autoPlayLoopEnabled = false;
             LoopAutoPlay.IsEnabled = false;
+            LoopAutoPlay.IsChecked = false;
         }
 
         private void loopAutoPlay_Checked(object sender, RoutedEventArgs e)
