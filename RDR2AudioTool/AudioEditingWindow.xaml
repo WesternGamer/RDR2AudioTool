@@ -14,7 +14,7 @@
                     <ListView x:Name="StreamList" Margin="10,32,10,85" SelectionChanged="StreamList_SelectionChanged">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Width="350">
+                                <GridViewColumn Width="360">
                                     <GridViewColumnHeader Content="Name" Click="GridViewColumnHeader_Click" Tag="Name" />
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
@@ -22,7 +22,7 @@
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
-                                <GridViewColumn Width="125">
+                                <GridViewColumn Width="135">
                                     <GridViewColumnHeader Content="Type" Click="GridViewColumnHeader_Click" Tag="Type" />
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
@@ -30,7 +30,7 @@
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
-                                <GridViewColumn Width="75">
+                                <GridViewColumn Width="135">
                                     <GridViewColumnHeader Content="Length" Click="GridViewColumnHeader_Click" Tag="Length" />
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
@@ -38,7 +38,7 @@
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
-                                <GridViewColumn Width="75">
+                                <GridViewColumn Width="135">
                                     <GridViewColumnHeader Content="Size" Click="GridViewColumnHeader_Click" Tag="Size" />
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
@@ -57,6 +57,8 @@
                     <Button x:Name="MoreOptionsButton" Content="More Options" HorizontalAlignment="Left" VerticalAlignment="Top" Height="24" Width="100" Margin="521,0,0,0" RenderTransformOrigin="0.135,0.585" IsEnabled="False" Foreground="White" BorderBrush="#FF424242" Background="#FF1F1F1F"/>
                     <Rectangle HorizontalAlignment="Left" Height="24" Margin="215,0,0,0" Stroke="#FF424242" VerticalAlignment="Top" Width="1" Fill="#FF424242"/>
                     <Label x:Name="DurationLabel" Content="00:00 / 00:00" HorizontalAlignment="Left" Margin="10,0,0,15" VerticalAlignment="Bottom"/>
+                    <CheckBox x:Name="AutoPlayBox" Content="Autoplay" HorizontalAlignment="Left" Margin="115,0,0,18" VerticalAlignment="Bottom" IsEnabled="False" Checked="autoPlay_Checked" Unchecked="autoPlay_Unchecked"/>
+                    <CheckBox x:Name="LoopAutoPlay" Content="Loop" HorizontalAlignment="Left" Margin="195,0,0,18" VerticalAlignment="Bottom" IsEnabled="False" Checked="loopAutoPlay_Checked" Unchecked="loopAutoPlay_Unchecked"/>
                     <Button x:Name="PlayLastButton" Content="⏮" HorizontalAlignment="Center" Margin="-85,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayLastButton_Click"/>
                     <Button x:Name="PlayButton" Content="⏵" HorizontalAlignment="Center" Margin="15,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayButton_Click"/>
                     <Button x:Name="PlayNextButton" Content="⏭" HorizontalAlignment="Center" Margin="115,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayNextButton_Click"/>
