@@ -1,13 +1,16 @@
-﻿
+
 using CodeWalker;
 using CodeWalker.GameFiles;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
-
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Threading;
 
 
 namespace RDR2AudioTool
@@ -27,6 +30,10 @@ namespace RDR2AudioTool
 
 
         private System.Windows.Threading.DispatcherTimer timer;
+        private GridViewColumn lastSortedColumn = new GridViewColumn();
+        private ListSortDirection lastSortDirection = ListSortDirection.Ascending;
+        private bool autoPlayEnabled = false;
+        private bool autoPlayLoopEnabled = false;
 
         WaveOut waveOut = null;
 
@@ -53,35 +60,118 @@ namespace RDR2AudioTool
             }
         }
 
+        private ItemInfo currentItem = null;
+
         public AudioEditingWindow()
         {
-            //Loaded += delegate (object sender, RoutedEventArgs e) { this.Owner.Hide(); };
-            //Closed += delegate (object? sender, EventArgs e) { this.Owner.Close(); };
             waveOut = new WaveOut();
             waveOut.PlaybackStopped += waveOut_PlaybackStopped;
             InitializeComponent();
-            timer = new System.Windows.Threading.DispatcherTimer();
+            timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Render); //smoother slide
             timer.Tick += new EventHandler(timer_Tick);
             timer.Interval = TimeSpan.FromMilliseconds(10); // update the slider every 10 milliseconds so it has like a smooth slide
             TimeSpan timerInterval = timer.Interval;
+            VolumeResetButton.IsEnabled = false;
+            VolumeSlider.IsEnabled = false;
         }
         private void waveOut_PlaybackStopped(object sender, StoppedEventArgs e)
         {
             if (waveOut.PlaybackState == PlaybackState.Stopped)
             {
-                //basically at this point the playback has stopped so we want to reset the slider for it to look nice 😋
+                if (timer.IsEnabled)
+                {
+                    timer.Stop();
+                }
+                slider.Value = slider.Minimum;
                 this.Dispatcher.Invoke(() =>
                 {
-                    slider.Value = slider.Minimum;
-                    DurationLabel.Content = "00:00";
-                    /*PlayButton.Content = "▶";
-                    PlayButton.Click += new RoutedEventHandler(PlayButton_Click);*/
+                    if (autoPlayEnabled)
+                    {
+                        ItemInfo item = null;
+                        if ((currentPlayingIndex + 1) > (StreamList.Items.Count - 1) || currentPlayingIndex > (StreamList.Items.Count - 1))
+                        {
+                            if (autoPlayLoopEnabled)
+                            {
+                                currentPlayingIndex = 0;
+                                item = StreamList.Items[currentPlayingIndex] as ItemInfo;
+                            }
+                        }
+                        else if ((currentPlayingIndex + 1) <= (StreamList.Items.Count - 1))
+                        {
+                            currentPlayingIndex += 1;
+                            item = StreamList.Items[currentPlayingIndex] as ItemInfo;
+                        }
+
+                        if (item != null)
+                        {
+                            var audio = item.Stream;
+                            currentItem = item;
+                            IWaveProvider provider = null;
+                            if (audio.Type.Contains("ADPCM"))
+                            {
+                                provider = new RawSourceWaveStream(new MemoryStream(audio.GetPcmData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
+                            }
+                            else
+                            {
+                                provider = new RawSourceWaveStream(new MemoryStream(audio.GetRawData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
+                            }
+                            waveOut.Init(provider);
+                            waveOut.Play();
+                            timer.Start();
+                            StreamList.SelectedIndex = currentPlayingIndex;
+                            double totalDuration = audio.Length;
+                            slider.Maximum = totalDuration;
+                            slider.Value = 0;
+                        }
+                    }
                 });
             }
         }
+
+        private void GridViewColumnHeader_Click(object sender, RoutedEventArgs e)
+        {
+            GridViewColumnHeader column = (GridViewColumnHeader)sender;
+            string tag = column.Tag as string;
+
+            if (lastSortedColumn != null && lastSortedColumn.Header != column)
+            {
+                lastSortedColumn.HeaderTemplate = null;
+            }
+
+            ListSortDirection direction = ListSortDirection.Ascending;
+            if (column != lastSortedColumn.Header)
+            {
+                direction = ListSortDirection.Ascending;
+                column.Column.HeaderTemplate = Resources["HeaderTemplateArrowUp"] as DataTemplate;
+            }
+            else
+            {
+                direction = (lastSortDirection == ListSortDirection.Ascending) ? ListSortDirection.Descending : ListSortDirection.Ascending;
+                column.Column.HeaderTemplate = (direction == ListSortDirection.Ascending) ? Resources["HeaderTemplateArrowUp"] as DataTemplate : Resources["HeaderTemplateArrowDown"] as DataTemplate; //this works for now, would like for arrow to be above/below column name, but thats for the future.
+            }
+
+            lastSortedColumn = column.Column;
+            lastSortDirection = direction;
+            SortListView(tag, direction);
+        }
+
+        private void SortListView(string tag, ListSortDirection direction)
+        {
+            ICollectionView view = CollectionViewSource.GetDefaultView(StreamList.Items); //we use StreamList.Items because in RefreshList we set StreamList.ItemsSource to null so passing that in to this will do nothing!!
+
+            if (view != null)
+            {
+                view.SortDescriptions.Clear();
+                view.SortDescriptions.Add(new SortDescription(tag, direction));
+                view.Refresh();
+            }
+        }
+        
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             var fbd = new Microsoft.Win32.OpenFileDialog();
+
+            fbd.Filter = "Audio Wave Container (.awc)|*.awc";
 
             if (fbd.ShowDialog() == true && !string.IsNullOrWhiteSpace(fbd.FileName))
             {
@@ -94,6 +184,9 @@ namespace RDR2AudioTool
 
                         Awc = new AwcFile();
                         Awc.Load(memoryStream.ToArray(), System.IO.Path.GetFileName(fbd.FileName));
+                        Title = $"AudioEditingWindow - {System.IO.Path.GetFileName(fbd.FileName)}";
+                        VolumeResetButton.IsEnabled = true;
+                        VolumeSlider.IsEnabled = true;
 
                         RefreshList();
                     }
@@ -244,6 +337,7 @@ namespace RDR2AudioTool
                 SaveButton.IsEnabled = true;
                 RenameButton.IsEnabled = true;
                 ReplaceButton.IsEnabled = true;
+                AutoPlayBox.IsEnabled = true;
                 //DeleteButton.IsEnabled = true;
                 //MoreOptionsButton.IsEnabled = true;
 
@@ -299,21 +393,27 @@ namespace RDR2AudioTool
                 return;
             }
 
-            /*PlayButton.Content = "⏸";
-            PlayButton.Click += new RoutedEventHandler(PauseButton_Click);*/
-
             Stop();
 
             if (StreamList.SelectedItems.Count == 1)
             {
                 var item = StreamList.SelectedItems[0] as ItemInfo;
                 var audio = item.Stream;
-
-                IWaveProvider provider = new RawSourceWaveStream(new MemoryStream(audio.GetRawData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
-
+                currentItem = item;
+                IWaveProvider provider = null;
+                if (audio.Type.Contains("ADPCM"))
+                {
+                    provider = new RawSourceWaveStream(new MemoryStream(audio.GetPcmData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
+                }
+                else
+                {
+                    provider = new RawSourceWaveStream(new MemoryStream(audio.GetRawData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
+                }
                 waveOut.Init(provider);
                 waveOut.Play();
                 timer.Start();
+
+                currentPlayingIndex = StreamList.SelectedIndex;
 
                 double totalDuration = audio.Length; //this is how we make sure that the bar length is equal to the duration so that it properly goes from start to finish
                 slider.Maximum = totalDuration;
@@ -352,6 +452,12 @@ namespace RDR2AudioTool
                 StreamList.SelectedIndex = currentPlayingIndex;
                 Play();
             }
+            else
+            {
+                StreamList.SelectedIndex = 0;
+                currentPlayingIndex = 0;
+                Play();
+            }
         }
 
         private void PlayLast()
@@ -363,6 +469,132 @@ namespace RDR2AudioTool
                 StreamList.SelectedIndex = currentPlayingIndex;
                 Play();
             }
+            else if(currentPlayingIndex == 0)
+            {
+                currentPlayingIndex = StreamList.Items.Count - 1;
+                StreamList.SelectedIndex = StreamList.Items.Count - 1; 
+                Play();
+            }
+        }
+
+        private void timer_Tick(object sender, EventArgs e)
+        {
+            if (waveOut.PlaybackState == PlaybackState.Playing)
+            {
+
+                double currentPosition = waveOut.GetPosition() / (double)waveOut.OutputWaveFormat.AverageBytesPerSecond;
+                slider.Value = currentPosition;
+
+                TimeSpan durationTime = TimeSpan.FromSeconds(currentItem.Stream.Length);
+                TimeSpan currentTime = TimeSpan.FromSeconds(currentPosition);
+                DurationLabel.Content = $"{currentTime.ToString(@"mm\:ss")} / {durationTime.ToString(@"mm\:ss")}"; //change 00:00 to the actual length of the audio 
+            }
+        }
+
+        private void MoreOptionsButton_Copy_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void PlayButton_Click(object sender, RoutedEventArgs e)
+        {
+            Play();
+        }
+
+        private void PlayLastButton_Click(object sender, RoutedEventArgs e)
+        {
+            PlayLast();
+        }
+
+        private void PlayNextButton_Click(object sender, RoutedEventArgs e)
+        {
+            PlayNext();
+        }
+        private void PauseButton_Click(object sender, RoutedEventArgs e)
+        {
+            Pause();
+        }
+
+        private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+
+        }
+
+        private void TabControl_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (e.Source is TabControl tabControl)
+            {
+                if (tabControl.SelectedItem == AwcPlayerTab) //check which tab is currently selected, more specifically if it's the player tab.  We do this to refresh the list when they switch back
+                {
+                    RefreshList();
+                }
+                else if (tabControl.SelectedItem == AwcXmlTab)
+                {
+                    AwcXmlTextBox.Text = AwcXml.GetXml(Awc);
+                }
+            }
+        }
+
+        private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (waveOut.PlaybackState == PlaybackState.Playing)
+            {
+                waveOut.Volume = (float)(VolumeSlider.Value / 100);
+
+            }
+            if(VolumeLabel != null)
+            {
+                if(VolumeLabel.Content != null)
+                {
+                    VolumeLabel.Content = VolumeSlider.Value.ToString();
+                }
+            }
+        }
+
+        private void StreamList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (waveOut.PlaybackState != PlaybackState.Playing)
+            {
+                waveOut.Volume = .5f;
+                VolumeSlider.Value = 50;
+                if (StreamList.SelectedItems.Count == 1)
+                {
+                    currentItem = StreamList.SelectedItems[0] as ItemInfo;
+                    TimeSpan durationTime = TimeSpan.FromSeconds(currentItem.Stream.Length);
+                    DurationLabel.Content = $"00:00 / {durationTime.ToString(@"mm\:ss")}"; //change 00:00 to the actual length of the audio 
+                }
+            }
+        }
+
+        //reset button for volume slider but button looks shit so for now it's disabled
+        private void Button_Click_2(object sender, RoutedEventArgs e)
+        {
+            waveOut.Volume = .5f;
+            VolumeSlider.Value = 50;
+        }
+
+        private void autoPlay_Checked(object sender, RoutedEventArgs e)
+        {
+            autoPlayEnabled = true;
+            LoopAutoPlay.IsEnabled = true;
+        }
+
+        private void autoPlay_Unchecked(object sender, RoutedEventArgs e)
+        {
+            autoPlayEnabled = false;
+            autoPlayLoopEnabled = false;
+            LoopAutoPlay.IsEnabled = false;
+            LoopAutoPlay.IsChecked = false;
+        }
+
+        private void loopAutoPlay_Checked(object sender, RoutedEventArgs e)
+        {
+            autoPlayLoopEnabled = true;
+        }
+
+        private void loopAutoPlay_Unchecked(object sender, RoutedEventArgs e)
+        {
+            autoPlayLoopEnabled = false;
         }
 
         private void timer_Tick(object sender, EventArgs e)

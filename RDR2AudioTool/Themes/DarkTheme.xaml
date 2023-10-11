@@ -1,4 +1,4 @@
-﻿<ResourceDictionary x:Class="REghZyFramework.Themes.DarkTheme"
+<ResourceDictionary x:Class="REghZyFramework.Themes.DarkTheme"
                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero2">
@@ -413,26 +413,31 @@
                             <Setter Property="BorderBrush" TargetName="checkBoxBorder" Value="{StaticResource ControlMouseOverBorderBrush}" />
                             <Setter Property="Fill" TargetName="optionMark" Value="{StaticResource ControlMouseOverGlythColour}" />
                             <Setter Property="Fill" TargetName="indeterminateMark" Value="{StaticResource ControlMouseOverGlythColour}" />
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="false">
                             <Setter Property="Background" TargetName="checkBoxBorder" Value="{StaticResource ControlDisabledBackground}" />
                             <Setter Property="BorderBrush" TargetName="checkBoxBorder" Value="{StaticResource ControlDisabledBorderBrush}" />
                             <Setter Property="Fill" TargetName="optionMark" Value="{StaticResource ControlDisabledGlythColour}" />
                             <Setter Property="Fill" TargetName="indeterminateMark" Value="{StaticResource ControlDisabledGlythColour}" />
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="true">
                             <Setter Property="Background" TargetName="checkBoxBorder" Value="{StaticResource ControlSelectedBackground}" />
                             <Setter Property="BorderBrush" TargetName="checkBoxBorder" Value="{StaticResource ControlSelectedBorderBrush}" />
                             <Setter Property="Fill" TargetName="optionMark" Value="{StaticResource ControlSelectedGlythColour}" />
                             <Setter Property="Fill" TargetName="indeterminateMark" Value="{StaticResource ControlSelectedGlythColour}" />
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="true">
                             <Setter Property="Opacity" TargetName="optionMark" Value="1" />
                             <Setter Property="Opacity" TargetName="indeterminateMark" Value="0" />
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
                         </Trigger>
-                        <Trigger Property="IsChecked" Value="{x:Null}">
+                        <Trigger Property="IsChecked" Value="false" >
                             <Setter Property="Opacity" TargetName="optionMark" Value="0" />
-                            <Setter Property="Opacity" TargetName="indeterminateMark" Value="1" />
+                            <Setter Property="Opacity" TargetName="indeterminateMark" Value="0" />
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
