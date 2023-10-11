@@ -1,4 +1,4 @@
-﻿<ResourceDictionary x:Class="REghZyFramework.Themes.DarkTheme"
+<ResourceDictionary x:Class="REghZyFramework.Themes.DarkTheme"
                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero2">
@@ -404,35 +404,40 @@
                                           VerticalAlignment="Center" Margin="3,0,0,0" />
                     </Grid>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="HasContent" Value="true">
+                        <Trigger Property="HasContent" Value="True">
                             <Setter Property="FocusVisualStyle" Value="{StaticResource OptionMarkFocusVisual}" />
                             <Setter Property="Padding" Value="4,-1,0,0" />
                         </Trigger>
-                        <Trigger Property="IsMouseOver" Value="true">
+                        <Trigger Property="IsMouseOver" Value="True">
                             <Setter Property="Background" TargetName="checkBoxBorder" Value="{StaticResource ControlMouseOverBackground}" />
                             <Setter Property="BorderBrush" TargetName="checkBoxBorder" Value="{StaticResource ControlMouseOverBorderBrush}" />
                             <Setter Property="Fill" TargetName="optionMark" Value="{StaticResource ControlMouseOverGlythColour}" />
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
                             <Setter Property="Fill" TargetName="indeterminateMark" Value="{StaticResource ControlMouseOverGlythColour}" />
                         </Trigger>
-                        <Trigger Property="IsEnabled" Value="false">
+                        <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Background" TargetName="checkBoxBorder" Value="{StaticResource ControlDisabledBackground}" />
                             <Setter Property="BorderBrush" TargetName="checkBoxBorder" Value="{StaticResource ControlDisabledBorderBrush}" />
                             <Setter Property="Fill" TargetName="optionMark" Value="{StaticResource ControlDisabledGlythColour}" />
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
                             <Setter Property="Fill" TargetName="indeterminateMark" Value="{StaticResource ControlDisabledGlythColour}" />
                         </Trigger>
-                        <Trigger Property="IsPressed" Value="true">
+                        <Trigger Property="IsPressed" Value="True">
                             <Setter Property="Background" TargetName="checkBoxBorder" Value="{StaticResource ControlSelectedBackground}" />
                             <Setter Property="BorderBrush" TargetName="checkBoxBorder" Value="{StaticResource ControlSelectedBorderBrush}" />
                             <Setter Property="Fill" TargetName="optionMark" Value="{StaticResource ControlSelectedGlythColour}" />
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
                             <Setter Property="Fill" TargetName="indeterminateMark" Value="{StaticResource ControlSelectedGlythColour}" />
                         </Trigger>
-                        <Trigger Property="IsChecked" Value="true">
+                        <Trigger Property="IsChecked" Value="True">
                             <Setter Property="Opacity" TargetName="optionMark" Value="1" />
                             <Setter Property="Opacity" TargetName="indeterminateMark" Value="0" />
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
                         </Trigger>
-                        <Trigger Property="IsChecked" Value="{x:Null}">
+                        <Trigger Property="IsChecked" Value="False">
                             <Setter Property="Opacity" TargetName="optionMark" Value="0" />
                             <Setter Property="Opacity" TargetName="indeterminateMark" Value="1" />
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -636,7 +641,7 @@
         <Setter Property="AllowDrop" Value="true" />
         <Setter Property="MinWidth" Value="0" />
         <Setter Property="MinHeight" Value="0" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="ScrollViewer.PanningMode" Value="VerticalFirst" />
         <Setter Property="Stylus.IsFlicksEnabled" Value="False" />
         <Setter Property="Template">
@@ -1942,7 +1947,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="KeyboardNavigation.TabNavigation" Value="None" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="AllowDrop" Value="true" />
         <Setter Property="ScrollViewer.PanningMode" Value="VerticalFirst" />
         <Setter Property="Stylus.IsFlicksEnabled" Value="False" />
@@ -2142,7 +2147,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="KeyboardNavigation.TabNavigation" Value="None" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="AllowDrop" Value="true" />
         <Setter Property="ScrollViewer.PanningMode" Value="VerticalFirst" />
         <Setter Property="Stylus.IsFlicksEnabled" Value="False" />
@@ -3554,7 +3559,7 @@
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <!--using VCA=top because a multilined textbox is assumed-->
         <Setter Property="VerticalContentAlignment" Value="Top" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="AllowDrop" Value="true" />
         <Setter Property="ScrollViewer.PanningMode" Value="VerticalFirst" />
         <Setter Property="Stylus.IsFlicksEnabled" Value="False" />
@@ -3903,6 +3908,7 @@
 
     <!-- ToolBarTray -->
     <Style TargetType="{x:Type ToolBarTray}">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="Background" Value="{StaticResource ContainerBackground}" />
     </Style>
 
@@ -3928,6 +3934,7 @@
         <Setter Property="MaxWidth" Value="800" />
         <Setter Property="OverridesDefaultStyle" Value="true" />
         <Setter Property="HasDropShadow" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="Placement" Value="MousePoint" />
         <Setter Property="PlacementRectangle" Value="10 10 5 5" />
         <Setter Property="HorizontalOffset" Value="15" />
@@ -4025,6 +4032,7 @@
         <Setter Property="Foreground" Value="{StaticResource ControlDefaultForeground}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="ResizeMode" Value="CanResizeWithGrip" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="WindowStyle" Value="SingleBorderWindow" />
         <Setter Property="WindowChrome.WindowChrome">
             <Setter.Value>
@@ -4161,6 +4169,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="ResizeMode" Value="NoResize" />
         <Setter Property="WindowStyle" Value="SingleBorderWindow" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="WindowChrome.WindowChrome">
             <Setter.Value>
                 <WindowChrome CaptionHeight="26"
@@ -4247,6 +4256,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="ResizeMode" Value="NoResize" />
         <Setter Property="WindowStyle" Value="SingleBorderWindow" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="WindowChrome.WindowChrome">
             <Setter.Value>
                 <WindowChrome CaptionHeight="26"
@@ -4361,6 +4371,7 @@
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
         <Setter Property="ScrollViewer.PanningMode" Value="Both" />
         <Setter Property="Stylus.IsFlicksEnabled" Value="False" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
             <Setter.Value>
@@ -4556,6 +4567,7 @@
         <Setter Property="ScrollViewer.PanningMode" Value="Both" />
         <Setter Property="Stylus.IsFlicksEnabled" Value="False" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="RowDetailsVisibilityMode" Value="VisibleWhenSelected"/>
         <Setter Property="Stylus.IsFlicksEnabled" Value="False"/>
         <Setter Property="Template">
@@ -4632,6 +4644,7 @@
 
     <!--Style and template for the DataGridCell.-->
     <Style TargetType="{x:Type DataGridCell}">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type DataGridCell}">
@@ -4648,7 +4661,6 @@
     </Style>
 
     <Style TargetType="{x:Type Button}" x:Key="{ComponentResourceKey ResourceId=DataGridSelectAllButtonStyle, TypeInTargetAssembly={x:Type DataGrid}}">
-        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="Background" Value="{StaticResource ControlDefaultBackground}" />
         <Setter Property="BorderBrush" Value="{StaticResource ControlDefaultBorderBrush}" />
         <Setter Property="Foreground" Value="{StaticResource ControlDefaultForeground}" />
@@ -4701,6 +4713,7 @@
 
     <!--Style and template for the DataGridColumnHeadersPresenter.-->
     <Style TargetType="{x:Type DataGridColumnHeadersPresenter}">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type DataGridColumnHeadersPresenter}">
