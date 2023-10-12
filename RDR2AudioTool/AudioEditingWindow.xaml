@@ -59,7 +59,7 @@
                     <CheckBox x:Name="AutoPlayBox" Content="Autoplay" HorizontalAlignment="Left" Margin="115,0,0,18" VerticalAlignment="Bottom" IsEnabled="False" Checked="autoPlay_Checked" Unchecked="autoPlay_Unchecked"/>
                     <CheckBox x:Name="LoopAutoPlay" Content="Loop Entire AWC" HorizontalAlignment="Left" Margin="195,0,0,18" VerticalAlignment="Bottom" IsEnabled="False" Checked="loopAutoPlay_Checked" Unchecked="loopAutoPlay_Unchecked"/>
                     <Button x:Name="PlayLastButton" Content="⏮" HorizontalAlignment="Center" Margin="-85,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayLastButton_Click" IsEnabled="False"/>
-                    <Button x:Name="PlayButton" Content="⏵" HorizontalAlignment="Center" Margin="15,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayButton_Click" IsEnabled="False"/>
+                    <Button x:Name="PlayButton" Content="▶" HorizontalAlignment="Center" Margin="15,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayButton_Click" IsEnabled="False"/>
                     <Button x:Name="PlayNextButton" Content="⏭" HorizontalAlignment="Center" Margin="115,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayNextButton_Click" IsEnabled="False"/>
                     <DockPanel DockPanel.Dock="Bottom" LastChildFill="True" Margin="10">
                         <Slider x:Name="slider" HorizontalAlignment="Stretch" Margin="0,0,0,45" VerticalAlignment="Bottom" IsEnabled="False" ValueChanged="Slider_ValueChanged"/>

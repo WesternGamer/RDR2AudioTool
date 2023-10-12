@@ -498,6 +498,10 @@ namespace RDR2AudioTool
                 waveOut.Play();
                 timer.Start();
 
+                PlayButton.Content = "⏸";
+                PlayButton.Click -= playHandler;
+                PlayButton.Click += pauseHandler;
+
                 double totalDuration = lengthSeconds; //this is how we make sure that the bar length is equal to the duration so that it properly goes from start to finish
                 slider.Maximum = totalDuration;
                 slider.Value = 0;
@@ -525,7 +529,7 @@ namespace RDR2AudioTool
             {
                 waveOut.Pause();
                 isPaused = true;
-                PlayButton.Content = "⏵";
+                PlayButton.Content = "▶";
                 PlayButton.Click -= pauseHandler;
                 PlayButton.Click += playHandler;
             }
@@ -538,7 +542,7 @@ namespace RDR2AudioTool
                 waveOut.Dispose();
             waveOut = new WaveOut();
             timer.Stop();
-            PlayButton.Content = "⏵";
+            PlayButton.Content = "▶";
         }
 
         private void PlayNext()
