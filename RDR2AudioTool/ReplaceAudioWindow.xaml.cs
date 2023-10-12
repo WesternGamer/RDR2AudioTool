@@ -164,7 +164,7 @@ namespace RDR2AudioTool
 
         private byte[] EncodeIfNeeded(IWaveProvider reader)
         {
-            if (CodecType == AwcCodecType.ADPCM)
+            if (CodecType == AwcCodecType.ADPCM || CodecType == AwcCodecType.PCM)
             {
                 WaveFormat format = new WaveFormat(reader.WaveFormat.SampleRate, 16, reader.WaveFormat.Channels);
 
@@ -193,56 +193,59 @@ namespace RDR2AudioTool
                 return bytes;
             }
 
-            if (CodecType == AwcCodecType.VORBIS && reader.WaveFormat.Encoding == WaveFormatEncoding.IeeeFloat)
+            if (CodecType == AwcCodecType.VORBIS)
             {
-                MemoryStream outputStream = new MemoryStream();
-
-                byte[] array = new byte[reader.WaveFormat.AverageBytesPerSecond * 4];
-                while (true)
+                if (reader.WaveFormat.Encoding == WaveFormatEncoding.IeeeFloat)
                 {
-                    int num = reader.Read(array, 0, array.Length);
-                    if (num == 0)
+                    MemoryStream outputStream = new MemoryStream();
+
+                    byte[] array = new byte[reader.WaveFormat.AverageBytesPerSecond * 4];
+                    while (true)
                     {
-                        break;
+                        int num = reader.Read(array, 0, array.Length);
+                        if (num == 0)
+                        {
+                            break;
+                        }
+
+                        outputStream.Write(array, 0, num);
                     }
 
-                    outputStream.Write(array, 0, num);
+                    byte[] bytes = outputStream.ToArray();
+
+                    outputStream.Dispose();
+
+                    return bytes;
                 }
-
-                byte[] bytes = outputStream.ToArray();
-
-                outputStream.Dispose();
-
-                return bytes;
-            }
-            else if (CodecType != AwcCodecType.PCM)
-            {
-                WaveFormat format = new WaveFormat(reader.WaveFormat.SampleRate, 16, reader.WaveFormat.Channels);
-
-                MemoryStream outputStream = new MemoryStream();
-
-                MediaFoundationResampler resampler = new MediaFoundationResampler(reader, format);
-
-                Wave16ToFloatProvider floatProvider = new Wave16ToFloatProvider(resampler);
-
-                byte[] array = new byte[floatProvider.WaveFormat.AverageBytesPerSecond * 4];
-                while (true)
+                else 
                 {
-                    int num = floatProvider.Read(array, 0, array.Length);
-                    if (num == 0)
+                    WaveFormat format = new WaveFormat(reader.WaveFormat.SampleRate, 16, reader.WaveFormat.Channels);
+
+                    MemoryStream outputStream = new MemoryStream();
+
+                    MediaFoundationResampler resampler = new MediaFoundationResampler(reader, format);
+
+                    Wave16ToFloatProvider floatProvider = new Wave16ToFloatProvider(resampler);
+
+                    byte[] array = new byte[floatProvider.WaveFormat.AverageBytesPerSecond * 4];
+                    while (true)
                     {
-                        break;
+                        int num = floatProvider.Read(array, 0, array.Length);
+                        if (num == 0)
+                        {
+                            break;
+                        }
+
+                        outputStream.Write(array, 0, num);
                     }
 
-                    outputStream.Write(array, 0, num);
+                    resampler.Dispose();
+
+                    byte[] bytes = outputStream.ToArray();
+                    return bytes;
                 }
-
-                resampler.Dispose();
-
-                byte[] bytes = outputStream.ToArray();
-                return bytes;
+                
             }
-
             return null;
         }
     }
