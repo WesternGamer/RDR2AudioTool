@@ -29,7 +29,11 @@ namespace RDR2AudioTool
             }
             catch (Exception ex)
             {
+#if DEBUG
+                throw;
+#else
                 MessageBox.Show(ex.ToString(), "An Critical Error Occurred", MessageBoxButtons.OK, MessageBoxIcon.Error);
+#endif
             }
         }
     }

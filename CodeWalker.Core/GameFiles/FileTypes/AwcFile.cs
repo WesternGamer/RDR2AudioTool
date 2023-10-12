@@ -366,77 +366,106 @@ namespace CodeWalker.GameFiles
             return f;
         }
 
-        public void ReplaceAudioStream(MetaHash? streamHash, uint sampleCount, uint sampleRate, byte[] pcmAudioData, AwcCodecType targetCodec)
+        public unsafe void ReplaceAudioStreamStereo(MetaHash leftHash, MetaHash rightHash, uint sampleCount, uint sampleRate, byte[] pcmAudioData, AwcCodecType targetCodec)
         {
-            if (MultiChannelFlag)
+            int bits = -1;
+
+            if (targetCodec == AwcCodecType.VORBIS)
             {
-                ReplaceAudioStreamStereo(sampleCount, sampleRate, pcmAudioData, targetCodec);
-                return;
+                bits = 32;
             }
             else
             {
-                ReplaceAudioStreamSingle(streamHash.Value, sampleCount, sampleRate, pcmAudioData, targetCodec);
-                return;
+                bits = 16;
             }
-        }
 
-        public void ReplaceAudioStreamStereo(uint sampleCount, uint sampleRate, byte[] pcmAudioData, AwcCodecType targetCodec)
-        {
-            var outputs = new List<List<byte>>();
-            for (int i = 0; i < 2; i++)
+            byte[] leftData = null;
+            byte[] rightData = null;
+
+            leftData = new byte[pcmAudioData.Length / 2];
+            rightData = new byte[pcmAudioData.Length / 2];
+
+            int position = 0;
+
+            for (int n = 0; n < pcmAudioData.Length; n += (bits / 8) * 2)
             {
-                outputs.Add(new List<byte>());
+                leftData[position] = pcmAudioData[n];
+                leftData[position + 1] = pcmAudioData[n + 1];
+                rightData[position] = pcmAudioData[n + 2];
+                rightData[position + 1] = pcmAudioData[n + 3];
+                position += 2;
             }
 
-            int channelCount = 2;
-            var count = 0;
-            for (int i = 0; i < pcmAudioData.Length; i += (16 / 8))
-            {
-                for (int j = 0; j < (16 / 8); j++)
-                {
-                    outputs[count].Add(pcmAudioData[i + j]);
-                }
-                count++;
-                channelCount--;
-                if (channelCount >= 1) continue;
-                channelCount = 2;
-                count = 0;
-            }
+            byte[] leftStreamIdData = null;
+            byte[] leftCommentData = null;
+            byte[] leftCodebookData = null;
 
-            byte[] leftPcm = outputs[0].ToArray();
-            byte[] rightPcm = outputs[1].ToArray();
+            byte[] rightStreamIdData = null;
+            byte[] rightCommentData = null;
+            byte[] rightCodebookData = null;
 
             if (targetCodec == AwcCodecType.ADPCM)
             {
-                leftPcm = ADPCMCodec.EncodeADPCM(leftPcm, (int)sampleCount);
-                rightPcm = ADPCMCodec.EncodeADPCM(rightPcm, (int)sampleCount);
+                leftData = ADPCMCodec.EncodeADPCM(leftData, (int)sampleCount);
+                rightData = ADPCMCodec.EncodeADPCM(rightData, (int)sampleCount);
             }
             else if (targetCodec == AwcCodecType.VORBIS)
             {
+                //leftData = VorbisHelper.Encode(leftData, 1, sampleRate, out leftStreamIdData, out leftCommentData, out leftCodebookData);
+                //rightData = VorbisHelper.Encode(rightData, 1, sampleRate, out rightStreamIdData, out rightCommentData, out rightCodebookData);
                 throw new NotImplementedException("Vorbis support is not implemented");
             }
 
-            if (Streams.Length != 3)
+            AwcStream rightStream = null;
+            foreach (AwcStream stream in Streams)
             {
-                throw new InvalidOperationException($"Unexpected stream count of {Streams.Length}");
+                if (stream.Hash == rightHash)
+                {
+                    rightStream = stream;
+                    break;
+                }
             }
 
-            AwcStream rightStream = Streams[1];
-            AwcStream leftStream = Streams[2];
+            AwcStream leftStream = null;
+            foreach (AwcStream stream in Streams)
+            {
+                if (stream.Hash == leftHash)
+                {
+                    leftStream = stream;
+                    break;
+                }
+            }
 
             if (targetCodec == AwcCodecType.ADPCM || targetCodec == AwcCodecType.PCM)
             {
-                ReplacePCM(ref rightStream, sampleCount, sampleRate, rightPcm, targetCodec, true);
-                ReplacePCM(ref leftStream, sampleCount, sampleRate, leftPcm, targetCodec, true);
+                ReplacePCM(ref rightStream, sampleCount, sampleRate, rightData, targetCodec, MultiChannelFlag);
+                ReplacePCM(ref leftStream, sampleCount, sampleRate, leftData, targetCodec, MultiChannelFlag);
             }
             else if (targetCodec == AwcCodecType.VORBIS)
             {
-                ReplaceVorbis(ref rightStream, sampleCount, sampleRate, rightPcm, true);
-                ReplaceVorbis(ref leftStream, sampleCount, sampleRate, leftPcm, true);
+                ReplaceVorbis(ref rightStream, sampleCount, sampleRate, rightData, leftStreamIdData, leftCommentData, leftCodebookData, MultiChannelFlag);
+                ReplaceVorbis(ref leftStream, sampleCount, sampleRate, leftData, rightStreamIdData, rightCommentData, rightCodebookData, MultiChannelFlag);
             }
 
-            Streams[1] = rightStream;
-            Streams[2] = leftStream;
+            for (int i = 0; i < Streams.Length; i++)
+            {
+                var str = Streams[i];
+
+                if (str.Hash == rightHash)
+                {
+                    Streams[i] = rightStream;
+                }
+            }
+
+            for (int i = 0; i < Streams.Length; i++)
+            {
+                var str = Streams[i];
+
+                if (str.Hash == leftHash)
+                {
+                    Streams[i] = leftStream;
+                }
+            }
         }
 
         public void ReplaceAudioStreamSingle(MetaHash streamHash, uint sampleCount, uint sampleRate, byte[] pcmAudioData, AwcCodecType targetCodec)
@@ -467,11 +496,12 @@ namespace CodeWalker.GameFiles
 
             if (targetCodec == AwcCodecType.ADPCM || targetCodec == AwcCodecType.PCM)
             {
-                ReplacePCM(ref targetStream, sampleCount, sampleRate, pcmAudioData, targetCodec, false);
+                ReplacePCM(ref targetStream, sampleCount, sampleRate, pcmAudioData, targetCodec, MultiChannelFlag);
             }
             else if (targetCodec == AwcCodecType.VORBIS)
             {
-                ReplaceVorbis(ref targetStream, sampleCount, sampleRate, pcmAudioData, false);
+                throw new NotImplementedException("Vorbis support is not implemented");
+                //ReplaceVorbis(ref targetStream, sampleCount, sampleRate, pcmAudioData, false);
             }
 
             for (int i = 0; i < Streams.Length; i++)
@@ -484,7 +514,7 @@ namespace CodeWalker.GameFiles
             }
         }
 
-        public void ReplacePCM(ref AwcStream stream, uint sampleCount, uint sampleRate, byte[] pcmAudioData, AwcCodecType codecType, bool isStereo = false)
+        public void ReplacePCM(ref AwcStream stream, uint sampleCount, uint sampleRate, byte[] pcmAudioData, AwcCodecType codecType, bool isMultiChannel = false)
         {
             if (stream.VorbisChunk != null)
             {
@@ -514,7 +544,7 @@ namespace CodeWalker.GameFiles
             }
             chunks.ToArray();
 
-            if (!isStereo)
+            if (!isMultiChannel)
             {
                 if (stream.Unk1 == null)
                 {
@@ -552,9 +582,71 @@ namespace CodeWalker.GameFiles
             stream.DataChunk.Data = pcmAudioData;
         }
 
-        public void ReplaceVorbis(ref AwcStream stream, uint sampleCount, uint sampleRate, byte[] pcmAudioData, bool isStereo = false)
+        public void ReplaceVorbis(ref AwcStream stream, uint sampleCount, uint sampleRate, byte[] audioData, byte[] streamIdData, byte[] commentData, byte[] codebookData, bool isMultiChannel = false)
         {
-            throw new NotImplementedException("Vorbis support is not implemented");
+            if(stream.FormatChunk != null)
+            {
+                stream.FormatChunk = null;
+            }
+
+            List<AwcChunk> chunks = stream.Chunks.ToList();
+            stream.Chunks = null;
+
+            for (int p = 0; p < chunks.Count; p++)
+            {
+                if (chunks[p].GetType() == typeof(AwcFormatChunk))
+                {
+                    chunks.Remove(chunks[p]);
+                }
+            }
+            chunks.ToArray();
+
+            if (!isMultiChannel)
+            {
+                if (stream.Unk1 == null)
+                {
+                    stream.Unk1 = new Unk1Chunk(new AwcChunkInfo() { Type = AwcChunkType.unk1 });
+                    stream.Unk1.LoopPoint = -1;
+                    stream.Unk1.Headroom = 0;
+                    stream.Unk1.LoopBegin = 0;
+                    stream.Unk1.LoopEnd = 0;
+                    stream.Unk1.PlayEnd = 0;
+                    stream.Unk1.PlayBegin = 0;
+                    stream.Unk1.Unk2 = -1;
+                    stream.Unk1.Peak = 0;
+                    stream.Unk1.Unk4 = 0;
+                    chunks.Add(stream.Unk1);
+                }
+
+                stream.Unk1.Samples = sampleCount;
+                stream.Unk1.SamplesPerSecond = (ushort)sampleRate;
+                stream.Unk1.Unk1 = (ushort)sampleCount;
+                stream.Unk1.Codec = AwcCodecType.VORBIS;
+            }
+            else
+            {
+                stream.StreamFormat.Samples = sampleCount;
+                stream.StreamFormat.SamplesPerSecond = (ushort)sampleRate;
+                stream.StreamFormat.Codec = AwcCodecType.VORBIS;
+            }
+
+            if (stream.VorbisChunk == null)
+            {
+                stream.VorbisChunk = new AwcVorbisChunk(new AwcChunkInfo() { Type = AwcChunkType.vorbisheader });
+                stream.VorbisChunk.DataSection1 = streamIdData;
+                stream.VorbisChunk.DataSection2 = commentData;
+                stream.VorbisChunk.DataSection3 = codebookData;
+                chunks.Add(stream.VorbisChunk);
+            }
+
+
+            stream.Chunks = chunks.ToArray();
+
+            if (stream.DataChunk == null)
+            {
+                stream.DataChunk = new AwcDataChunk(new AwcChunkInfo() { Type = AwcChunkType.data });
+            }
+            stream.DataChunk.Data = audioData;
         }
 
         public AwcChunk[] GetSortedChunks()
@@ -1102,7 +1194,7 @@ namespace CodeWalker.GameFiles
             }
         }
         private string CachedName;
-        public string Type
+        public string TypeString
         {
             get
             {
@@ -1141,6 +1233,28 @@ namespace CodeWalker.GameFiles
                 }
 
                 return codec + ((hz > 0) ? (", " + hz.ToString() + " Hz") : "");
+            }
+        }
+
+        public AwcCodecType Type 
+        {
+            get
+            {
+                var fc = AwcCodecType.PCM;
+                if (FormatChunk != null)
+                {
+                    fc = FormatChunk.Codec;
+                }
+                if (StreamFormat != null)
+                {
+                    fc = StreamFormat.Codec;
+                }
+                if (Unk1 != null)
+                {
+                    fc = Unk1.Codec;
+                }
+
+                return fc;
             }
         }
 
@@ -1678,6 +1792,10 @@ namespace CodeWalker.GameFiles
             if (codec == AwcCodecType.ADPCM)//just convert ADPCM to PCM for compatibility reasons
             {
                 data = ADPCMCodec.DecodeADPCM(data, SampleCount);
+            }
+            else if (codec == AwcCodecType.VORBIS)
+            {
+                throw new NotSupportedException("Vorbis audio cannot be played for now.");
             }
 
             return data;

@@ -28,6 +28,9 @@ namespace RDR2AudioTool
     {
         AwcFile? Awc = null;
 
+        private RoutedEventHandler? playHandler = null;
+
+        private RoutedEventHandler? pauseHandler = null;
 
         private System.Windows.Threading.DispatcherTimer timer;
         private GridViewColumn lastSortedColumn = new GridViewColumn();
@@ -35,9 +38,11 @@ namespace RDR2AudioTool
         private bool autoPlayEnabled = false;
         private bool autoPlayLoopEnabled = false;
 
-        WaveOut waveOut = null;
+        private WaveOut? waveOut = null;
 
-        private int currentPlayingIndex = -1;
+        private RawSourceWaveStream? sourceWaveStream = null;
+
+        private int currentPlayingIndex = 0;
 
         private TimeSpan timerInterval;
         private bool isPaused = false;
@@ -50,82 +55,56 @@ namespace RDR2AudioTool
             public string Size { get; set; }
             public AwcStream Stream { get; set; }
 
-            public ItemInfo(string name, string type, string length, string size, AwcStream stream)
+            public ItemInfo(AwcStream stream)
             {
-                Name = name;
-                Type = type;
-                Length = length;
-                Size = size;
+                Name = stream.Name;
+                Type = stream.TypeString;
+                Length = stream.LengthStr;
+                Size = TextUtil.GetBytesReadable(stream.ByteLength);
                 Stream = stream;
             }
         }
 
-        private ItemInfo currentItem = null;
+        public class StereoItemInfo
+        {
+            public string Name { get; set; }
+            public string Type { get; set; }
+            public string Length { get; set; }
+            public string Size { get; set; }
+            public AwcStream StreamLeft { get; set; }
+            public AwcStream StreamRight { get; set; }
+
+            public StereoItemInfo(AwcStream streamLeft, AwcStream streamRight)
+            {
+                Name = streamLeft.Name.Substring(0, streamLeft.Name.Length - 5);
+                Type = streamLeft.TypeString;
+                Length = streamLeft.LengthStr;
+                Size = TextUtil.GetBytesReadable(streamLeft.ByteLength + streamRight.ByteLength);
+                StreamLeft = streamLeft;
+                StreamRight = streamRight;
+            }
+        }
 
         public AudioEditingWindow()
         {
             waveOut = new WaveOut();
-            waveOut.PlaybackStopped += waveOut_PlaybackStopped;
             InitializeComponent();
             timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Render); //smoother slide
             timer.Tick += new EventHandler(timer_Tick);
             timer.Interval = TimeSpan.FromMilliseconds(10); // update the slider every 10 milliseconds so it has like a smooth slide
             TimeSpan timerInterval = timer.Interval;
+            playHandler = new RoutedEventHandler(PlayButton_Click);
+            pauseHandler = new RoutedEventHandler(PauseButton_Click);
             VolumeResetButton.IsEnabled = false;
             VolumeSlider.IsEnabled = false;
         }
-        private void waveOut_PlaybackStopped(object sender, StoppedEventArgs e)
-        {
-            if (waveOut.PlaybackState == PlaybackState.Stopped)
-            {
-                if (timer.IsEnabled)
-                {
-                    timer.Stop();
-                }
-                slider.Value = slider.Minimum;
-                this.Dispatcher.Invoke(() =>
-                {
-                    if (autoPlayEnabled)
-                    {
-                        ItemInfo item = null;
-                        if ((currentPlayingIndex + 1) > (StreamList.Items.Count - 1) || currentPlayingIndex > (StreamList.Items.Count - 1))
-                        {
-                            if (autoPlayLoopEnabled)
-                            {
-                                currentPlayingIndex = 0;
-                                item = StreamList.Items[currentPlayingIndex] as ItemInfo;
-                            }
-                        }
-                        else if ((currentPlayingIndex + 1) <= (StreamList.Items.Count - 1))
-                        {
-                            currentPlayingIndex += 1;
-                            item = StreamList.Items[currentPlayingIndex] as ItemInfo;
-                        }
 
-                        if (item != null)
-                        {
-                            var audio = item.Stream;
-                            currentItem = item;
-                            IWaveProvider provider = null;
-                            if (audio.Type.Contains("ADPCM"))
-                            {
-                                provider = new RawSourceWaveStream(new MemoryStream(audio.GetPcmData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
-                            }
-                            else
-                            {
-                                provider = new RawSourceWaveStream(new MemoryStream(audio.GetRawData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
-                            }
-                            waveOut.Init(provider);
-                            waveOut.Play();
-                            timer.Start();
-                            StreamList.SelectedIndex = currentPlayingIndex;
-                            double totalDuration = audio.Length;
-                            slider.Maximum = totalDuration;
-                            slider.Value = 0;
-                        }
-                    }
-                });
-            }
+        protected override void OnClosed(EventArgs e)
+        {
+            isPaused = false;
+            waveOut.Stop();
+            waveOut.Dispose();
+            base.OnClosed(e);
         }
 
         private void GridViewColumnHeader_Click(object sender, RoutedEventArgs e)
@@ -166,7 +145,7 @@ namespace RDR2AudioTool
                 view.Refresh();
             }
         }
-        
+
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             var fbd = new Microsoft.Win32.OpenFileDialog();
@@ -184,7 +163,7 @@ namespace RDR2AudioTool
 
                         Awc = new AwcFile();
                         Awc.Load(memoryStream.ToArray(), System.IO.Path.GetFileName(fbd.FileName));
-                        Title = $"AudioEditingWindow - {System.IO.Path.GetFileName(fbd.FileName)}";
+                        Title = $"RDR2 Audio Tool - {System.IO.Path.GetFileName(fbd.FileName)}";
                         VolumeResetButton.IsEnabled = true;
                         VolumeSlider.IsEnabled = true;
 
@@ -201,6 +180,11 @@ namespace RDR2AudioTool
                 ReplaceButton.IsEnabled = false;
                 DeleteButton.IsEnabled = false;
                 MoreOptionsButton.IsEnabled = false;
+                slider.IsEnabled = false;
+                PlayLastButton.IsEnabled = false;
+                PlayButton.IsEnabled = false;
+                PlayNextButton.IsEnabled = false;
+                StreamList.IsEnabled = false;
             }
 
         }
@@ -297,6 +281,8 @@ namespace RDR2AudioTool
             {
                 List<AwcStream> hashStreams = new List<AwcStream>();
                 List<AwcStream> nameStreams = new List<AwcStream>();
+                List<AwcStream> filteredStreams = new List<AwcStream>();
+
 
                 var strlist = Awc.Streams.ToList();
                 foreach (var audio in strlist)
@@ -321,7 +307,7 @@ namespace RDR2AudioTool
                     var name = audio.Name;
                     if (stereo) continue; // name = "(Stereo Playback)";
 
-                    StreamList.Items.Add(new ItemInfo(name, audio.Type, audio.LengthStr, TextUtil.GetBytesReadable(audio.ByteLength), audio));
+                    StreamList.Items.Add(new ItemInfo(audio));
                 }
 
                 foreach (var audio in nameStreams)
@@ -331,26 +317,69 @@ namespace RDR2AudioTool
                     var name = audio.Name + $" (0x{audio.Hash})";
                     if (stereo) continue; // name = "(Stereo Playback)";
 
-                    StreamList.Items.Add(new ItemInfo(name, audio.Type, audio.LengthStr, TextUtil.GetBytesReadable(audio.ByteLength), audio));
+                    filteredStreams.Add(audio);
                 }
 
+                if (Awc.MultiChannelFlag)
+                {
+                    while (filteredStreams.Count > 0)
+                    {
+                        List<AwcStream> objectsToRemove = filteredStreams
+                        .GroupBy(obj => GetBaseName(obj.Name)) // Group by the base name
+                        .Where(group => group.Count() > 1)     // Filter groups with more than one item
+                        .SelectMany(group => group.Skip(0))    // Select all but the first item in each group
+                        .ToList();
+
+                        if (objectsToRemove.Count != 0)
+                        {
+                            StreamList.Items.Add(new StereoItemInfo(objectsToRemove[0], objectsToRemove[1]));
+
+                            filteredStreams.Remove(objectsToRemove[0]);
+                            filteredStreams.Remove(objectsToRemove[1]);
+                        }
+                        else if (filteredStreams.Count > 0)
+                        {
+                            foreach (var audio in filteredStreams)
+                            {
+                                StreamList.Items.Add(new ItemInfo(audio));
+                            }
+
+                            break;
+                        }
+                        
+                    }
+                }
+                else
+                {
+                    foreach (var audio in filteredStreams)
+                    {
+                        StreamList.Items.Add(new ItemInfo(audio));
+                    }
+                }
+
+                
                 SaveButton.IsEnabled = true;
                 RenameButton.IsEnabled = true;
                 ReplaceButton.IsEnabled = true;
                 AutoPlayBox.IsEnabled = true;
-                //DeleteButton.IsEnabled = true;
-                //MoreOptionsButton.IsEnabled = true;
+                slider.IsEnabled = true;
+                PlayLastButton.IsEnabled = true;
+                PlayButton.IsEnabled = true;
+                PlayNextButton.IsEnabled = true;
+                StreamList.IsEnabled = true;
 
-                if (Awc.MultiChannelFlag)
-                {
-                    StreamList.IsEnabled = false;
-                }
-                else
-                {
-                    StreamList.IsEnabled = true;
-                    StreamList.SelectedIndex = 0;
-                }
+                StreamList.SelectedIndex = 0;
             }
+        }
+
+        private string GetBaseName(string fullName)
+        {
+            int lastUnderscoreIndex = fullName.LastIndexOf('_');
+            if (lastUnderscoreIndex >= 0)
+            {
+                return fullName.Substring(0, lastUnderscoreIndex);
+            }
+            return fullName;
         }
 
         private void ReplaceButton_Click(object sender, RoutedEventArgs e)
@@ -363,9 +392,38 @@ namespace RDR2AudioTool
             {
                 if (Awc.MultiChannelFlag)
                 {
-                    if (Awc?.Streams != null)
+                    for (int i = 0; i < StreamList.SelectedItems.Count; i++)
                     {
-                        Awc?.ReplaceAudioStream(null, (uint)(window.SampleCount / 2), (uint)window.SampleRate, window.PcmData, window.CodecType);
+                        if (Awc?.Streams != null)
+                        {
+                            if ((StreamList.SelectedItems[i] as StereoItemInfo) != null)
+                            {
+                                byte[] pcmdata = null;
+
+                                pcmdata = window.PcmData;
+
+                                if (!window.StereoInput)
+                                {
+                                    pcmdata = MonoToStereo(pcmdata);
+                                }
+
+                                Awc?.ReplaceAudioStreamStereo((StreamList.SelectedItems[i] as StereoItemInfo).StreamLeft.Hash, (StreamList.SelectedItems[i] as StereoItemInfo).StreamRight.Hash, (uint)(window.SampleCount / 2), (uint)window.SampleRate, window.PcmData, window.CodecType);
+                            }
+                            else
+                            {
+                                byte[] pcmdata = null;
+
+                                pcmdata = window.PcmData;
+
+                                if (window.StereoInput)
+                                {
+                                    pcmdata = MixStereoToMono(pcmdata);
+                                }
+
+                                Awc?.ReplaceAudioStreamSingle((StreamList.SelectedItems[i] as ItemInfo).Stream.Hash, (uint)window.SampleCount / 2, (uint)window.SampleRate, pcmdata, window.CodecType);
+                            }
+
+                        }
                     }
 
                     RefreshList();
@@ -376,7 +434,16 @@ namespace RDR2AudioTool
                 {
                     if (Awc?.Streams != null)
                     {
-                        Awc?.ReplaceAudioStream((StreamList.SelectedItems[i] as ItemInfo).Stream.Hash, (uint)window.SampleCount, (uint)window.SampleRate, window.PcmData, window.CodecType);
+                        byte[] pcmdata = null;
+
+                        pcmdata = window.PcmData;
+
+                        if (window.StereoInput)
+                        {
+                            pcmdata = MixStereoToMono(pcmdata);
+                        }
+
+                        Awc?.ReplaceAudioStreamSingle((StreamList.SelectedItems[i] as ItemInfo).Stream.Hash, (uint)window.SampleCount, (uint)window.SampleRate, pcmdata, window.CodecType);
                     }
                 }
             }
@@ -386,6 +453,15 @@ namespace RDR2AudioTool
 
         private void Play()
         {
+            if (waveOut.PlaybackState == PlaybackState.Playing)
+            {
+                return;
+            }
+
+            PlayButton.Content = "⏸";
+            PlayButton.Click -= playHandler;
+            PlayButton.Click += pauseHandler;
+
             if (isPaused)
             {
                 waveOut.Play();
@@ -397,29 +473,51 @@ namespace RDR2AudioTool
 
             if (StreamList.SelectedItems.Count == 1)
             {
-                var item = StreamList.SelectedItems[0] as ItemInfo;
-                var audio = item.Stream;
-                currentItem = item;
-                IWaveProvider provider = null;
-                if (audio.Type.Contains("ADPCM"))
+                double lengthSeconds = 0;
+                var item = StreamList.Items[currentPlayingIndex];
+                if (item.GetType() == typeof(StereoItemInfo))
                 {
-                    provider = new RawSourceWaveStream(new MemoryStream(audio.GetPcmData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
+                    StereoItemInfo aud = (StereoItemInfo)item;
+                    lengthSeconds = aud.StreamLeft.Length;
+                    byte[] leftPcm = aud.StreamLeft.GetPcmData();
+                    byte[] rightPcm = aud.StreamRight.GetPcmData();
+
+                    byte[] stereoPcm = CombineLeftAndRightChannel(leftPcm, rightPcm);
+
+                    sourceWaveStream = new RawSourceWaveStream(new MemoryStream(stereoPcm), new WaveFormat(aud.StreamLeft.SamplesPerSecond, 16, 2));
                 }
                 else
                 {
-                    provider = new RawSourceWaveStream(new MemoryStream(audio.GetRawData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
+                    var audio = (item as ItemInfo).Stream;
+                    lengthSeconds = audio.Length;
+
+                    sourceWaveStream = new RawSourceWaveStream(new MemoryStream(audio.GetPcmData()), new WaveFormat(audio.SamplesPerSecond, 16, 1));
                 }
-                waveOut.Init(provider);
+
+                waveOut.Init(sourceWaveStream);
                 waveOut.Play();
                 timer.Start();
 
-                currentPlayingIndex = StreamList.SelectedIndex;
-
-                double totalDuration = audio.Length; //this is how we make sure that the bar length is equal to the duration so that it properly goes from start to finish
+                double totalDuration = lengthSeconds; //this is how we make sure that the bar length is equal to the duration so that it properly goes from start to finish
                 slider.Maximum = totalDuration;
                 slider.Value = 0;
             }
         }
+
+        private byte[] CombineLeftAndRightChannel(byte[] left, byte[] right)
+        {
+            byte[] output = new byte[left.Length + right.Length];
+            int outputIndex = 0;
+            for (int n = 0; n < left.Length; n += 2)
+            {
+                output[outputIndex++] = left[n];
+                output[outputIndex++] = left[n + 1];
+                output[outputIndex++] = right[n];
+                output[outputIndex++] = right[n + 1];
+            }
+            return output;
+        }
+
         //might update in the future but its really not needed I don't think.
         private void Pause()
         {
@@ -427,27 +525,27 @@ namespace RDR2AudioTool
             {
                 waveOut.Pause();
                 isPaused = true;
-                PlayButton.Content = "▶";
-                PlayButton.Click += new RoutedEventHandler(PlayButton_Click);
+                PlayButton.Content = "⏵";
+                PlayButton.Click -= pauseHandler;
+                PlayButton.Click += playHandler;
             }
         }
 
         private void Stop()
         {
-            if (waveOut.PlaybackState == PlaybackState.Playing)
-            {
-                waveOut.Stop();
+            isPaused = false;
+            waveOut.Stop();
                 waveOut.Dispose();
-                waveOut = new WaveOut();
-            }
+            waveOut = new WaveOut();
             timer.Stop();
+            PlayButton.Content = "⏵";
         }
 
         private void PlayNext()
         {
-            Stop();
             if (currentPlayingIndex < StreamList.Items.Count - 1)
             {
+                Stop();
                 currentPlayingIndex++;
                 StreamList.SelectedIndex = currentPlayingIndex;
                 Play();
@@ -462,17 +560,17 @@ namespace RDR2AudioTool
 
         private void PlayLast()
         {
-            Stop();
             if (currentPlayingIndex > 0)
             {
+                Stop();
                 currentPlayingIndex--;
                 StreamList.SelectedIndex = currentPlayingIndex;
                 Play();
             }
-            else if(currentPlayingIndex == 0)
+            else if (currentPlayingIndex == 0)
             {
                 currentPlayingIndex = StreamList.Items.Count - 1;
-                StreamList.SelectedIndex = StreamList.Items.Count - 1; 
+                StreamList.SelectedIndex = StreamList.Items.Count - 1;
                 Play();
             }
         }
@@ -482,12 +580,62 @@ namespace RDR2AudioTool
             if (waveOut.PlaybackState == PlaybackState.Playing)
             {
 
-                double currentPosition = waveOut.GetPosition() / (double)waveOut.OutputWaveFormat.AverageBytesPerSecond;
+                double currentPosition = sourceWaveStream.Position / (double)sourceWaveStream.WaveFormat.AverageBytesPerSecond;
                 slider.Value = currentPosition;
 
-                TimeSpan durationTime = TimeSpan.FromSeconds(currentItem.Stream.Length);
                 TimeSpan currentTime = TimeSpan.FromSeconds(currentPosition);
-                DurationLabel.Content = $"{currentTime.ToString(@"mm\:ss")} / {durationTime.ToString(@"mm\:ss")}"; //change 00:00 to the actual length of the audio 
+                DurationLabel.Content = currentTime.ToString(@"mm\:ss") + " / " + TimeSpan.FromSeconds(sourceWaveStream.Length / sourceWaveStream.WaveFormat.AverageBytesPerSecond).ToString(@"mm\:ss");
+            }
+            else
+            {
+                if (!isPaused && sourceWaveStream.Length == sourceWaveStream.Position)
+                {
+                    //basically at this point the playback has stopped so we want to reset the slider for it to look nice 😋
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        if (autoPlayEnabled)
+                        {
+                            object item = null;
+                            if ((currentPlayingIndex) == (StreamList.Items.Count - 1))
+                            {
+                                if (autoPlayLoopEnabled)
+                                {
+                                    currentPlayingIndex = 0;
+                                    item = StreamList.Items[currentPlayingIndex];
+                                    StreamList.SelectedItem = item;
+                                }
+                            }
+                            else if ((currentPlayingIndex) < (StreamList.Items.Count - 1))
+                            {
+                                currentPlayingIndex += 1;
+
+                                item = StreamList.Items[currentPlayingIndex];
+                                StreamList.SelectedItem = item;
+
+
+                            }
+
+                            if (item != null)
+                            {
+                                
+                                //currentItem = item;
+                                
+                                Stop();
+                                Play();
+                            }
+                        }
+
+                        else
+                        {
+                            slider.Value = slider.Minimum;
+                            DurationLabel.Content = "00:00 / " + TimeSpan.FromSeconds(sourceWaveStream.Length / sourceWaveStream.WaveFormat.AverageBytesPerSecond).ToString(@"mm\:ss");
+                            PlayButton.Content = "▶";
+                            PlayButton.Click -= pauseHandler;
+                            PlayButton.Click += playHandler;
+                        }
+                        
+                    });
+                }
             }
         }
 
@@ -517,7 +665,10 @@ namespace RDR2AudioTool
 
         private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-
+            if (slider.IsFocused || slider.IsMouseDirectlyOver || slider.IsMouseOver || slider.IsKeyboardFocused || slider.IsKeyboardFocusWithin)
+            {
+                sourceWaveStream.SetPosition(slider.Value);
+            }
         }
 
         private void TabControl_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -542,9 +693,9 @@ namespace RDR2AudioTool
                 waveOut.Volume = (float)(VolumeSlider.Value / 100);
 
             }
-            if(VolumeLabel != null)
+            if (VolumeLabel != null)
             {
-                if(VolumeLabel.Content != null)
+                if (VolumeLabel.Content != null)
                 {
                     VolumeLabel.Content = VolumeSlider.Value.ToString();
                 }
@@ -555,13 +706,21 @@ namespace RDR2AudioTool
         {
             if (waveOut.PlaybackState != PlaybackState.Playing)
             {
-                waveOut.Volume = .5f;
-                VolumeSlider.Value = 50;
-                if (StreamList.SelectedItems.Count == 1)
+                if (StreamList.SelectedItems.Count == 1 && StreamList.Items[currentPlayingIndex] != null)
                 {
-                    currentItem = StreamList.SelectedItems[0] as ItemInfo;
-                    TimeSpan durationTime = TimeSpan.FromSeconds(currentItem.Stream.Length);
-                    DurationLabel.Content = $"00:00 / {durationTime.ToString(@"mm\:ss")}"; //change 00:00 to the actual length of the audio 
+                  
+
+                    if (StreamList.Items[currentPlayingIndex] as ItemInfo is not null) 
+                    {
+                        TimeSpan durationTime = TimeSpan.FromSeconds((StreamList.Items[currentPlayingIndex] as ItemInfo).Stream.Length);
+                        DurationLabel.Content = $"00:00 / {durationTime.ToString(@"mm\:ss")}"; //change 00:00 to the actual length of the audio 
+                    }
+                    else if (StreamList.Items[currentPlayingIndex] is StereoItemInfo) 
+                    {
+                        TimeSpan durationTime = TimeSpan.FromSeconds((StreamList.Items[currentPlayingIndex] as StereoItemInfo).StreamLeft.Length);
+                        DurationLabel.Content = $"00:00 / {durationTime.ToString(@"mm\:ss")}"; //change 00:00 to the actual length of the audio 
+                    }
+                    
                 }
             }
         }
@@ -584,7 +743,6 @@ namespace RDR2AudioTool
             autoPlayEnabled = false;
             autoPlayLoopEnabled = false;
             LoopAutoPlay.IsEnabled = false;
-            LoopAutoPlay.IsChecked = false;
         }
 
         private void loopAutoPlay_Checked(object sender, RoutedEventArgs e)
@@ -595,6 +753,37 @@ namespace RDR2AudioTool
         private void loopAutoPlay_Unchecked(object sender, RoutedEventArgs e)
         {
             autoPlayLoopEnabled = false;
+        }
+
+        private byte[] MonoToStereo(byte[] input)
+        {
+            byte[] output = new byte[input.Length * 2];
+            int outputIndex = 0;
+            for (int n = 0; n < input.Length; n += 2)
+            {
+                output[outputIndex++] = input[n];
+                output[outputIndex++] = input[n + 1];
+                output[outputIndex++] = input[n];
+                output[outputIndex++] = input[n + 1];
+            }
+            return output;
+        }
+
+        private byte[] MixStereoToMono(byte[] input)
+        {
+            byte[] output = new byte[input.Length / 2];
+            int outputIndex = 0;
+            for (int n = 0; n < input.Length; n += 4)
+            {
+                int leftChannel = BitConverter.ToInt16(input, n);
+                int rightChannel = BitConverter.ToInt16(input, n + 2);
+                int mixed = (leftChannel + rightChannel) / 2;
+                byte[] outSample = BitConverter.GetBytes((short)mixed);
+
+                output[outputIndex++] = outSample[0];
+                output[outputIndex++] = outSample[1];
+            }
+            return output;
         }
     }
 }

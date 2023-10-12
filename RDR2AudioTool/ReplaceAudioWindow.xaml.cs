@@ -34,13 +34,12 @@ namespace RDR2AudioTool
 
         public int SampleRate = 0;
 
-        private readonly bool StereoMode = false;
+        public bool StereoInput = false;
 
-        public ReplaceAudioWindow(bool stereoMode = false)
+        public ReplaceAudioWindow(bool multiChannelFlag = false)
         {
-            StereoMode = stereoMode;
             InitializeComponent();
-            if (!stereoMode)
+            if (!multiChannelFlag)
             {
                 CodecSelectionBox.Items.Add("PCM");
             }
@@ -77,7 +76,7 @@ namespace RDR2AudioTool
                 CodecType = AwcCodecType.ADPCM;
                 return;
             }
-            if (CodecSelectionBox.SelectedItem == "VORBIS")
+            if (CodecSelectionBox.SelectedItem == "Vorbis")
             {
                 CodecType = AwcCodecType.VORBIS;
                 return;
@@ -130,15 +129,11 @@ namespace RDR2AudioTool
                 MessageBox.Show("Wav file has too many channels.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            PcmData = EncodeTo16BitPCMIfNeeded(wavFile);
+            PcmData = EncodeIfNeeded(wavFile);
             SampleRate = wavFile.WaveFormat.SampleRate;
-            if (StereoMode && wavFile.WaveFormat.Channels == 1)
+            if (wavFile.WaveFormat.Channels == 2)
             {
-                PcmData = MonoToStereo(PcmData);
-            }
-            if (!StereoMode && wavFile.WaveFormat.Channels == 2)
-            {
-                PcmData = MixStereoToMono(PcmData);
+                StereoInput = true;
             }
 
             SampleCount = PcmData.Length / 2;
@@ -157,78 +152,98 @@ namespace RDR2AudioTool
                 MessageBox.Show("Wav file has too many channels.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            PcmData = EncodeTo16BitPCMIfNeeded(mp3File);
+            PcmData = EncodeIfNeeded(mp3File);
             SampleRate = mp3File.WaveFormat.SampleRate;
-            if (StereoMode && mp3File.WaveFormat.Channels == 1)
+            if (mp3File.WaveFormat.Channels == 2)
             {
-                PcmData = MonoToStereo(PcmData);
-            }
-            if (!StereoMode && mp3File.WaveFormat.Channels == 2)
-            {
-                PcmData = MixStereoToMono(PcmData);
+                StereoInput = true;
             }
 
             SampleCount = PcmData.Length / 2;
         }
 
-        private byte[] EncodeTo16BitPCMIfNeeded(IWaveProvider reader)
+        private byte[] EncodeIfNeeded(IWaveProvider reader)
         {
-            WaveFormat format = new WaveFormat(reader.WaveFormat.SampleRate, 16, reader.WaveFormat.Channels);
-
-            MemoryStream outputStream = new MemoryStream();
-
-            MediaFoundationResampler resampler =  new MediaFoundationResampler(reader, format);
-
-            byte[] array = new byte[resampler.WaveFormat.AverageBytesPerSecond * 4];
-            while (true)
+            if (CodecType == AwcCodecType.ADPCM)
             {
-                int num = resampler.Read(array, 0, array.Length);
-                if (num == 0)
+                WaveFormat format = new WaveFormat(reader.WaveFormat.SampleRate, 16, reader.WaveFormat.Channels);
+
+                MemoryStream outputStream = new MemoryStream();
+
+                MediaFoundationResampler resampler = new MediaFoundationResampler(reader, format);
+
+                byte[] array = new byte[resampler.WaveFormat.AverageBytesPerSecond * 4];
+                while (true)
                 {
-                    break;
+                    int num = resampler.Read(array, 0, array.Length);
+                    if (num == 0)
+                    {
+                        break;
+                    }
+
+                    outputStream.Write(array, 0, num);
                 }
 
-                outputStream.Write(array, 0, num);
+                resampler.Dispose();
+
+                byte[] bytes = outputStream.ToArray();
+
+                outputStream.Dispose();
+
+                return bytes;
             }
 
-            resampler.Dispose();
-
-            byte[] bytes = outputStream.ToArray();
-
-            outputStream.Dispose();
-
-            return bytes;
-        }
-
-        private byte[] MonoToStereo(byte[] input)
-        {
-            byte[] output = new byte[input.Length * 2];
-            int outputIndex = 0;
-            for (int n = 0; n < input.Length; n += 2)
+            if (CodecType == AwcCodecType.VORBIS && reader.WaveFormat.Encoding == WaveFormatEncoding.IeeeFloat)
             {
-                output[outputIndex++] = input[n];
-                output[outputIndex++] = input[n + 1];
-                output[outputIndex++] = input[n];
-                output[outputIndex++] = input[n + 1];
-            }
-            return output;
-        }
+                MemoryStream outputStream = new MemoryStream();
 
-        private byte[] MixStereoToMono(byte[] input)
-        {
-            byte[] output = new byte[input.Length / 2];
-            int outputIndex = 0;
-            for (int n = 0; n < input.Length; n += 4)
+                byte[] array = new byte[reader.WaveFormat.AverageBytesPerSecond * 4];
+                while (true)
+                {
+                    int num = reader.Read(array, 0, array.Length);
+                    if (num == 0)
+                    {
+                        break;
+                    }
+
+                    outputStream.Write(array, 0, num);
+                }
+
+                byte[] bytes = outputStream.ToArray();
+
+                outputStream.Dispose();
+
+                return bytes;
+            }
+            else if (CodecType != AwcCodecType.PCM)
             {
-                int leftChannel = BitConverter.ToInt16(input, n);
-                int rightChannel = BitConverter.ToInt16(input, n + 2);
-                int mixed = (leftChannel + rightChannel) / 2;
-                byte[] outSample = BitConverter.GetBytes((short)mixed);
+                WaveFormat format = new WaveFormat(reader.WaveFormat.SampleRate, 16, reader.WaveFormat.Channels);
 
-                output[outputIndex++] = outSample[0];
-                output[outputIndex++] = outSample[1];
+                MemoryStream outputStream = new MemoryStream();
+
+                MediaFoundationResampler resampler = new MediaFoundationResampler(reader, format);
+
+                Wave16ToFloatProvider floatProvider = new Wave16ToFloatProvider(resampler);
+
+                byte[] array = new byte[floatProvider.WaveFormat.AverageBytesPerSecond * 4];
+                while (true)
+                {
+                    int num = floatProvider.Read(array, 0, array.Length);
+                    if (num == 0)
+                    {
+                        break;
+                    }
+
+                    outputStream.Write(array, 0, num);
+                }
+
+                resampler.Dispose();
+
+                byte[] bytes = outputStream.ToArray();
+                return bytes;
             }
-            return output;
+
+            return null;
         }
     }
 }

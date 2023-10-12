@@ -5,12 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RDR2AudioTool"
         mc:Ignorable="d"
-        Title="AudioEditingWindow" Height="532" Width="800" Background="#FF1F1F1F" Style="{StaticResource CustomWindowStyle}">
+        Title="RDR2 Audio Tool" Height="532" Width="825" MinHeight="532" MinWidth="825" Background="#FF1F1F1F" Style="{StaticResource CustomWindowStyle}">
     <Grid Margin="0,10,0,0">
         <TabControl SelectionChanged="TabControl_SelectionChanged">
             <TabItem x:Name="AwcPlayerTab" Header="Player">
                 <Grid Margin="0,10,0,0">
-                    <ListView x:Name="StreamList" Margin="10,32,10,85" SelectionChanged="StreamList_SelectionChanged">
+                    <ListView x:Name="StreamList" Margin="10,32,10,85" SelectionChanged="StreamList_SelectionChanged" IsEnabled="False">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Width="360">
@@ -57,10 +57,10 @@
                     <Rectangle HorizontalAlignment="Left" Height="24" Margin="215,0,0,0" Stroke="#FF424242" VerticalAlignment="Top" Width="1" Fill="#FF424242"/>
                     <Label x:Name="DurationLabel" Content="00:00 / 00:00" HorizontalAlignment="Left" Margin="10,0,0,15" VerticalAlignment="Bottom"/>
                     <CheckBox x:Name="AutoPlayBox" Content="Autoplay" HorizontalAlignment="Left" Margin="115,0,0,18" VerticalAlignment="Bottom" IsEnabled="False" Checked="autoPlay_Checked" Unchecked="autoPlay_Unchecked"/>
-                    <CheckBox x:Name="LoopAutoPlay" Content="Loop" HorizontalAlignment="Left" Margin="195,0,0,18" VerticalAlignment="Bottom" IsEnabled="False" Checked="loopAutoPlay_Checked" Unchecked="loopAutoPlay_Unchecked"/>
-                    <Button x:Name="PlayLastButton" Content="⏮" HorizontalAlignment="Center" Margin="-85,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayLastButton_Click"/>
-                    <Button x:Name="PlayButton" Content="⏵" HorizontalAlignment="Center" Margin="15,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayButton_Click"/>
-                    <Button x:Name="PlayNextButton" Content="⏭" HorizontalAlignment="Center" Margin="115,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayNextButton_Click"/>
+                    <CheckBox x:Name="LoopAutoPlay" Content="Loop Entire AWC" HorizontalAlignment="Left" Margin="195,0,0,18" VerticalAlignment="Bottom" IsEnabled="False" Checked="loopAutoPlay_Checked" Unchecked="loopAutoPlay_Unchecked"/>
+                    <Button x:Name="PlayLastButton" Content="⏮" HorizontalAlignment="Center" Margin="-85,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayLastButton_Click" IsEnabled="False"/>
+                    <Button x:Name="PlayButton" Content="⏵" HorizontalAlignment="Center" Margin="15,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayButton_Click" IsEnabled="False"/>
+                    <Button x:Name="PlayNextButton" Content="⏭" HorizontalAlignment="Center" Margin="115,0,0,8" VerticalAlignment="Bottom" Height="40" Width="40" FontSize="24" Click="PlayNextButton_Click" IsEnabled="False"/>
                     <DockPanel DockPanel.Dock="Bottom" LastChildFill="True" Margin="10">
                         <Slider x:Name="slider" HorizontalAlignment="Stretch" Margin="0,0,0,45" VerticalAlignment="Bottom" IsEnabled="False" ValueChanged="Slider_ValueChanged"/>
                     </DockPanel>

@@ -42,9 +42,6 @@ namespace RDR2AudioTool
 
         private void Button_Click_1(object sender, RoutedEventArgs e)
         {
-            StereoAudioEditingWindow editWindow = new StereoAudioEditingWindow();
-            editWindow.Owner = this;
-            editWindow.ShowDialog();
         }
     }
 }

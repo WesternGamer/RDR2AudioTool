@@ -21,4 +21,8 @@
     <Resource Include="Resources\magic.dat" />
   </ItemGroup>
 
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="copy &quot;..\ThirdParty\vorbis.dll&quot; &quot;$(OutDir)&quot;" />
+  </Target>
+
 </Project>

@@ -23,6 +23,7 @@
     <PackageReference Include="NAudio" Version="2.1.0" />
     <PackageReference Include="OggVorbisSharp" Version="1.0.1" />
     <PackageReference Include="PresentationFramework.Aero2" Version="1.0.1" />
+    <PackageReference Include="WindowsAPICodePackShell" Version="7.0.4" />
   </ItemGroup>
 
   <ItemGroup>
