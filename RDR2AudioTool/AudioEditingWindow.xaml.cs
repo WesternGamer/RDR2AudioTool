@@ -789,5 +789,30 @@ namespace RDR2AudioTool
             }
             return output;
         }
+
+        private void MenuItemOption1_Click(object sender, RoutedEventArgs e)
+        {
+            if (StreamList.SelectedItem is ItemInfo selectedFileItem)
+            {
+                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "WAV Files|*.wav",
+                    Title = "Export to WAV",
+                    FileName = selectedFileItem.Name,
+                };
+
+                if (saveFileDialog.ShowDialog() == true)
+                {
+                    string outputPath = saveFileDialog.FileName;
+                    byte[] audioData = selectedFileItem.Stream.GetPcmData();
+
+                    using (WaveFileWriter waveWriter = new WaveFileWriter(outputPath, new WaveFormat(selectedFileItem.Stream.SamplesPerSecond, 16, 1)))
+                    {
+                        waveWriter.Write(audioData, 0, audioData.Length);
+                    }
+                    System.Windows.MessageBox.Show($"Exported {selectedFileItem.Name} to {outputPath}");
+                }
+            }
+        }
     }
 }
