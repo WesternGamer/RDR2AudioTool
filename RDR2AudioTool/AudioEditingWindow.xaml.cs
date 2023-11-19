@@ -42,6 +42,8 @@ namespace RDR2AudioTool
 
         private RawSourceWaveStream? sourceWaveStream = null;
 
+        private ObservableCollection<object> originalItems = new ObservableCollection<object>(); //needed in order for search to work
+
         private int currentPlayingIndex = 0;
 
         private TimeSpan timerInterval;
@@ -308,6 +310,7 @@ namespace RDR2AudioTool
                     if (stereo) continue; // name = "(Stereo Playback)";
 
                     StreamList.Items.Add(new ItemInfo(audio));
+                    originalItems.Add(new ItemInfo(audio));
                 }
 
                 foreach (var audio in nameStreams)
@@ -333,6 +336,7 @@ namespace RDR2AudioTool
                         if (objectsToRemove.Count != 0)
                         {
                             StreamList.Items.Add(new StereoItemInfo(objectsToRemove[0], objectsToRemove[1]));
+                            originalItems.Add(new StereoItemInfo(objectsToRemove[0], objectsToRemove[1]));
 
                             filteredStreams.Remove(objectsToRemove[0]);
                             filteredStreams.Remove(objectsToRemove[1]);
@@ -342,6 +346,7 @@ namespace RDR2AudioTool
                             foreach (var audio in filteredStreams)
                             {
                                 StreamList.Items.Add(new ItemInfo(audio));
+                                originalItems.Add(new ItemInfo(audio));
                             }
 
                             break;
@@ -354,6 +359,7 @@ namespace RDR2AudioTool
                     foreach (var audio in filteredStreams)
                     {
                         StreamList.Items.Add(new ItemInfo(audio));
+                        originalItems.Add(new ItemInfo(audio));
                     }
                 }
 
@@ -367,6 +373,7 @@ namespace RDR2AudioTool
                 PlayButton.IsEnabled = true;
                 PlayNextButton.IsEnabled = true;
                 StreamList.IsEnabled = true;
+                searchTextBox.IsEnabled = true;
 
                 StreamList.SelectedIndex = 0;
             }
@@ -788,6 +795,108 @@ namespace RDR2AudioTool
                 output[outputIndex++] = outSample[1];
             }
             return output;
+        }
+
+        private void MenuItemOption1_Click(object sender, RoutedEventArgs e)
+        {
+            if(StreamList.SelectedItems.Count > 1) 
+            {
+                foreach(var item in StreamList.SelectedItems)
+                {
+                    if (item is ItemInfo selectedFileItem) // just doing mono for now, will do stereo later
+                    {
+                        if (currentExportPath == string.Empty)
+                        {
+                            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                            {
+                                Filter = "WAV Files|*.wav",
+                                Title = "Export to WAV",
+                                FileName = selectedFileItem.Name,
+                            };
+
+                            if (saveFileDialog.ShowDialog() == true)
+                            {
+                                string outputPath = saveFileDialog.FileName;
+                                byte[] audioData = selectedFileItem.Stream.GetPcmData();
+
+                                using (WaveFileWriter waveWriter = new WaveFileWriter(outputPath, new WaveFormat(selectedFileItem.Stream.SamplesPerSecond, 16, 1)))
+                                {
+                                    waveWriter.Write(audioData, 0, audioData.Length);
+                                }
+                                currentExportPath = Path.GetDirectoryName(outputPath);
+                            }
+                        }
+                        else
+                        {
+                            byte[] audioData = selectedFileItem.Stream.GetPcmData();
+                            using (WaveFileWriter waveWriter = new WaveFileWriter(currentExportPath + $"/{selectedFileItem.Name}.wav", new WaveFormat(selectedFileItem.Stream.SamplesPerSecond, 16, 1)))
+                            {
+                                waveWriter.Write(audioData, 0, audioData.Length);
+                            }
+                        }
+                    }
+                }
+                MessageBox.Show($"Export Complete");
+                currentExportPath = string.Empty;   
+            }
+            else if(StreamList.SelectedItems.Count == 1) 
+            {
+                if (StreamList.SelectedItem is ItemInfo selectedFileItem)
+                {
+                    var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                    {
+                        Filter = "WAV Files|*.wav",
+                        Title = "Export to WAV",
+                        FileName = selectedFileItem.Name,
+                    };
+
+                    if (saveFileDialog.ShowDialog() == true)
+                    {
+                        string outputPath = saveFileDialog.FileName;
+                        byte[] audioData = selectedFileItem.Stream.GetPcmData();
+
+                        using (WaveFileWriter waveWriter = new WaveFileWriter(outputPath, new WaveFormat(selectedFileItem.Stream.SamplesPerSecond, 16, 1)))
+                        {
+                            waveWriter.Write(audioData, 0, audioData.Length);
+                        }
+                        MessageBox.Show($"Exported {selectedFileItem.Name} to {outputPath}");
+                    }
+                }
+            }
+        }
+
+        private void searchTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string keyword = searchTextBox.Text.ToLower();
+
+            if (string.IsNullOrWhiteSpace(keyword))
+            {
+                if (StreamList != null && originalItems != null)
+                {
+                    StreamList.Items.Clear();
+                    foreach (var item in originalItems)
+                    {
+                        StreamList.Items.Add(item);
+                    }
+                }
+            }
+            else
+            {
+                if (StreamList != null && originalItems != null)
+                {
+                    var filteredItems = originalItems.Where(item => ((ItemInfo)item).Name.ToLower().Contains(keyword)).ToList(); //We can group all as ItemInfo as we only want the name
+
+                    StreamList.Items.Clear();
+                    foreach (var item in filteredItems)
+                    {
+                        StreamList.Items.Add(item);
+                    }
+                }
+            }
+            if (StreamList != null && StreamList.ItemsSource != null) // don't want to refresh or access ItemsSource before it's set
+            {
+                CollectionViewSource.GetDefaultView(StreamList.ItemsSource).Refresh();
+            }
         }
     }
 }

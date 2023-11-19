@@ -47,6 +47,11 @@
                                 </GridViewColumn>
                             </GridView>
                         </ListView.View>
+                        <ListView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Export To WAV" Click="MenuItemOption1_Click" />
+                            </ContextMenu>
+                        </ListView.ContextMenu>
                     </ListView>
                     <Button Content="Open AWC" HorizontalAlignment="Left" VerticalAlignment="Top" Height="24" Width="100" Click="Button_Click" Margin="10,0,0,0" Foreground="White" BorderBrush="#FF424242" Background="#FF1F1F1F"/>
                     <Button x:Name="SaveButton" Content="Save AWC" HorizontalAlignment="Left" VerticalAlignment="Top" Height="24" Width="100" Margin="110,0,0,0" Click="Button_Click_1" IsEnabled="False" Foreground="White" BorderBrush="#FF424242" Background="#FF1F1F1F"/>
@@ -69,6 +74,7 @@
                     </DockPanel>
                     <Button x:Name="VolumeResetButton" Content="🔄" HorizontalAlignment="Right" Margin="0,0,190,18" VerticalAlignment="Bottom" Height="20" Width="20" Click="Button_Click_2"/>
                     <Label x:Name="VolumeLabel" Content="50" HorizontalAlignment="Right" Margin="0,0,160,15" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="searchTextBox" HorizontalAlignment="Left" Margin="675,0,0,0" TextWrapping="Wrap" Text="Search..." VerticalAlignment="Top" Width="132" Height="24" IsEnabled="False" TextChanged="searchTextBox_TextChanged"/>
                 </Grid>
             </TabItem>
             <TabItem x:Name="AwcXmlTab" Header="XML">
