@@ -74,6 +74,7 @@
                     </DockPanel>
                     <Button x:Name="VolumeResetButton" Content="🔄" HorizontalAlignment="Right" Margin="0,0,190,18" VerticalAlignment="Bottom" Height="20" Width="20" Click="Button_Click_2"/>
                     <Label x:Name="VolumeLabel" Content="50" HorizontalAlignment="Right" Margin="0,0,160,15" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="searchTextBox" HorizontalAlignment="Left" Margin="675,0,0,0" TextWrapping="Wrap" Text="Search..." VerticalAlignment="Top" Width="132" Height="24" IsEnabled="False" TextChanged="searchTextBox_TextChanged"/>
                 </Grid>
             </TabItem>
             <TabItem x:Name="AwcXmlTab" Header="XML">
