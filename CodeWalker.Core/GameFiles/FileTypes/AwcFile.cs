@@ -3787,8 +3787,7 @@ namespace CodeWalker.GameFiles
             if (Vorbis.vorbis_synthesis_init(&state, &info) == 0)
             {
                 Vorbis.vorbis_block_init(&state, &vorbis_Block);
-
-                File.WriteAllBytes(@"C:\Users\Western\Downloads\rawdatavorbis.bin", dataPages[0]);
+                
                 foreach (byte[] page in dataPages)
                 {
                     MemoryStream ms2 = new MemoryStream(page);
