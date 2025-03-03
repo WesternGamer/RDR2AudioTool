@@ -3749,7 +3749,6 @@ namespace CodeWalker.GameFiles
                 throw new Exception("Unable to process info header.");
             }
             
-
             ogg_packet commentPacket = new ogg_packet();
             fixed (byte* bptr = header2)
             {
@@ -3785,8 +3784,6 @@ namespace CodeWalker.GameFiles
             MemoryStream ms = new MemoryStream();
             BinaryWriter writer = new BinaryWriter(ms);
             
-
-
             if (Vorbis.vorbis_synthesis_init(&state, &info) == 0)
             {
                 Vorbis.vorbis_block_init(&state, &vorbis_Block);
@@ -3866,27 +3863,20 @@ namespace CodeWalker.GameFiles
 
                                 writer.Write(resultBlock);
 
-                                Vorbis.vorbis_synthesis_read(&state, outputLength); /* tell libvorbis how
-                                                      many samples we
-                                                      actually consumed */
+                                Vorbis.vorbis_synthesis_read(&state, outputLength); 
                             }
                         }
                         else
                         {
-                            continue;
+                            break;
                         }
 
                         packetsize = reader.ReadUInt16();
                     }
-
-                   
                 }
-
-                
 
                 Vorbis.vorbis_block_clear(&vorbis_Block);
                 Vorbis.vorbis_dsp_clear(&state);
-
             }
             else
             {
@@ -3896,8 +3886,6 @@ namespace CodeWalker.GameFiles
             Vorbis.vorbis_comment_clear(&comment);
             Vorbis.vorbis_info_clear(&info);
 
-
-            File.WriteAllBytes(@"C:\Users\Western\Downloads\rawdata.bin", ms.ToArray());
             return ms.ToArray();
         }
 
