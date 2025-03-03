@@ -11,6 +11,8 @@ using TC = System.ComponentModel.TypeConverterAttribute;
 using EXP = System.ComponentModel.ExpandableObjectConverter;
 using System.Xml;
 using NAudio.Wave;
+using OggVorbisSharp;
+using System.Runtime.InteropServices;
 
 namespace CodeWalker.GameFiles
 {
@@ -28,7 +30,7 @@ namespace CodeWalker.GameFiles
         public int DataOffset { get; set; }
 
         public bool ChunkIndicesFlag { get { return ((Flags & 1) == 1); } set { Flags = (ushort)((Flags & 0xFFFE) + (value ? 1 : 0)); } }
-        public bool SingleChannelEncryptFlag { get { return ((Flags & 2) == 2); } set { Flags = (ushort)((Flags & 0xFFFD) + (value ? 2 : 0)); } }
+        public bool SingleChannelEncryptFlag { get { return ((Flags & 2) == 2); } set { Flags = (ushort)((Flags & 0xFFFD) + (value ? 2 : 0)); } } //This may be a flag for vorbis awcs instead
         public bool MultiChannelFlag { get { return ((Flags & 4) == 4); } set { Flags = (ushort)((Flags & 0xFFFB) + (value ? 4 : 0)); } }
         public bool MultiChannelEncryptFlag { get { return ((Flags & 8) == 8); } set { Flags = (ushort)((Flags & 0xFFF7) + (value ? 8 : 0)); } }
 
@@ -143,7 +145,7 @@ namespace CodeWalker.GameFiles
 
 
         private void Read(DataReader r)
-        {
+        {   
             Magic = r.ReadUInt32();
             Version = r.ReadUInt16();
             Flags = r.ReadUInt16();
@@ -239,7 +241,7 @@ namespace CodeWalker.GameFiles
             w.Write(Flags);
             w.Write(StreamCount);
             w.Write(DataOffset);
-
+            
             if (ChunkIndicesFlag)
             {
                 for (int i = 0; i < StreamCount; i++)
@@ -548,7 +550,7 @@ namespace CodeWalker.GameFiles
             {
                 if (stream.Unk1 == null)
                 {
-                    stream.Unk1 = new Unk1Chunk(new AwcChunkInfo() { Type = AwcChunkType.unk1 });
+                    stream.Unk1 = new AwcNewFormatChunk(new AwcChunkInfo() { Type = AwcChunkType.formatnew });
                     stream.Unk1.LoopPoint = -1;
                     stream.Unk1.Headroom = 0;
                     stream.Unk1.LoopBegin = 0;
@@ -557,7 +559,7 @@ namespace CodeWalker.GameFiles
                     stream.Unk1.PlayBegin = 0;
                     stream.Unk1.Unk2 = -1;
                     stream.Unk1.Peak = 0;
-                    stream.Unk1.Unk4 = 0;
+                    stream.Unk1.VorbisHeaderLength = 0;
                     chunks.Add(stream.Unk1);
                 }
 
@@ -605,7 +607,7 @@ namespace CodeWalker.GameFiles
             {
                 if (stream.Unk1 == null)
                 {
-                    stream.Unk1 = new Unk1Chunk(new AwcChunkInfo() { Type = AwcChunkType.unk1 });
+                    stream.Unk1 = new AwcNewFormatChunk(new AwcChunkInfo() { Type = AwcChunkType.formatnew });
                     stream.Unk1.LoopPoint = -1;
                     stream.Unk1.Headroom = 0;
                     stream.Unk1.LoopBegin = 0;
@@ -614,7 +616,7 @@ namespace CodeWalker.GameFiles
                     stream.Unk1.PlayBegin = 0;
                     stream.Unk1.Unk2 = -1;
                     stream.Unk1.Peak = 0;
-                    stream.Unk1.Unk4 = 0;
+                    stream.Unk1.VorbisHeaderLength = 0;
                     chunks.Add(stream.Unk1);
                 }
 
@@ -669,9 +671,6 @@ namespace CodeWalker.GameFiles
             {
                 chunks.Sort((a, b) => b.ChunkInfo?.SortOrder.CompareTo(a.ChunkInfo?.SortOrder ?? 0) ?? -1);
                 chunks.Reverse();
-                //var audioHeaderChunks = chunks.Skip(2).Take(2).ToList().OrderBy(o=>o.ChunkInfo.Offset).ToList();
-                //chunks.RemoveRange(2, 2);
-                //chunks.InsertRange(2, audioHeaderChunks);
             }
 
             return chunks.ToArray();
@@ -1114,7 +1113,7 @@ namespace CodeWalker.GameFiles
         public AwcStream StreamSource { get; set; }
         public AwcStreamFormat StreamFormat { get; set; }
         public AwcStreamDataBlock[] StreamBlocks { get; set; }
-        public Unk1Chunk Unk1 { get; set; }
+        public AwcNewFormatChunk Unk1 { get; set; }
         public int StreamChannelIndex { get; set; }
 
 
@@ -1493,7 +1492,7 @@ namespace CodeWalker.GameFiles
                 case AwcChunkType.streamformat: return new AwcStreamFormatChunk(info);
                 case AwcChunkType.seektable: return new AwcSeekTableChunk(info);
                 case AwcChunkType.vorbisheader: return new AwcVorbisChunk(info);
-                case AwcChunkType.unk1: return new Unk1Chunk(info);
+                case AwcChunkType.formatnew: return new AwcNewFormatChunk(info);
             }
             return null;
         }
@@ -1517,7 +1516,7 @@ namespace CodeWalker.GameFiles
                     if (chunk is AwcGranularGrainsChunk ggChunk) GranularGrainsChunk = ggChunk;
                     if (chunk is AwcGranularLoopsChunk glChunk) GranularLoopsChunk = glChunk;
                     if (chunk is AwcVorbisChunk vorbisChunk) VorbisChunk = vorbisChunk;
-                    if (chunk is Unk1Chunk unkChunk) Unk1 = unkChunk;
+                    if (chunk is AwcNewFormatChunk unkChunk) Unk1 = unkChunk;
                 }
             }
         }
@@ -1795,9 +1794,17 @@ namespace CodeWalker.GameFiles
             }
             else if (codec == AwcCodecType.VORBIS)
             {
-                throw new NotSupportedException("Vorbis audio cannot be played for now.");
-            }
+                if (Unk1 != null)
+                {
+                    data = VorbisCodec.DecodeVorbis(data, Unk1.VorbisDataSection1, Unk1.VorbisDataSection2, Unk1.VorbisDataSection3);
+                }
+                else
+                {
+                    data = VorbisCodec.DecodeVorbis(data, VorbisChunk.DataSection1, VorbisChunk.DataSection2, VorbisChunk.DataSection3);
+                }
 
+                return data;
+            }
             return data;
         }
 
@@ -2080,7 +2087,7 @@ namespace CodeWalker.GameFiles
         streamformat = 0x48,    // 0x81F95048
         seektable = 0xA3,       // 0x021E86A3
         vorbisheader = 0x7F,    // 0x20D0EF7F
-        unk1 = 0x76,            // Seems to be info about the track 
+        formatnew = 0x76,       // 0xA4609776 
     }
 
     [TC(typeof(EXP))] public abstract class AwcChunk : IMetaXmlItem
@@ -2308,7 +2315,7 @@ namespace CodeWalker.GameFiles
         public ushort SamplesPerSecond { get; set; }
         public AwcCodecType Codec { get; set; } = AwcCodecType.ADPCM;
         public byte Unused1 { get; set; }
-        public ushort Unused2 { get; set; }
+        public ushort LoopBegin { get; set; }
 
 
         public void Read(DataReader r)
@@ -2319,7 +2326,7 @@ namespace CodeWalker.GameFiles
             SamplesPerSecond = r.ReadUInt16();
             Codec = (AwcCodecType)r.ReadByte();
             Unused1 = r.ReadByte();
-            Unused2 = r.ReadUInt16();
+            LoopBegin = r.ReadUInt16();
 
             #region test
             //switch (Codec)
@@ -2353,7 +2360,7 @@ namespace CodeWalker.GameFiles
             w.Write(SamplesPerSecond);
             w.Write((byte)Codec);
             w.Write(Unused1);
-            w.Write(Unused2);
+            w.Write(LoopBegin);
         }
         public void WriteXml(StringBuilder sb, int indent)
         {
@@ -2516,26 +2523,26 @@ namespace CodeWalker.GameFiles
         public class Gesture : IMetaXmlItem
         {
             public MetaHash Name { get; set; }
-            public uint UnkUint1 { get; set; }
-            public float UnkFloat1 { get; set; }
-            public float UnkFloat2 { get; set; }
-            public float UnkFloat3 { get; set; }
-            public float UnkFloat4 { get; set; }
-            public float UnkFloat5 { get; set; }
-            public float UnkFloat6 { get; set; }
+            public MetaHash UnkHash { get; set; }
+            public MetaHash UnkHash2 { get; set; }
+            public uint UnkCount { get; set; }
+            public uint UnkUint { get; set; }
             public uint UnkUint2 { get; set; }
+            public uint UnkUint3 { get; set; }
+            public uint UnkUint4 { get; set; }
+            public uint UnkUint5 { get; set; }
 
             public void Read(DataReader r)
             {
                 Name = r.ReadUInt32();
-                UnkUint1 = r.ReadUInt32();
-                UnkFloat1 = r.ReadSingle();
-                UnkFloat2 = r.ReadSingle();
-                UnkFloat3 = r.ReadSingle();
-                UnkFloat4 = r.ReadSingle();
-                UnkFloat5 = r.ReadSingle();
-                UnkFloat6 = r.ReadSingle();
+                UnkHash = r.ReadUInt32();
+                UnkHash2 = r.ReadUInt32();
+                UnkCount = r.ReadUInt32();
+                UnkUint = r.ReadUInt32();
                 UnkUint2 = r.ReadUInt32();
+                UnkUint3 = r.ReadUInt32();
+                UnkUint4 = r.ReadUInt32();
+                UnkUint5 = r.ReadUInt32();
 
                 //switch (Name)
                 //{
@@ -2580,43 +2587,43 @@ namespace CodeWalker.GameFiles
             public void Write(DataWriter w)
             {
                 w.Write(Name);
-                w.Write(UnkUint1);
-                w.Write(UnkFloat1);
-                w.Write(UnkFloat2);
-                w.Write(UnkFloat3);
-                w.Write(UnkFloat4);
-                w.Write(UnkFloat5);
-                w.Write(UnkFloat6);
+                w.Write(UnkHash);
+                w.Write(UnkHash2);
+                w.Write(UnkCount);
+                w.Write(UnkUint);
                 w.Write(UnkUint2);
+                w.Write(UnkUint3);
+                w.Write(UnkUint4);
+                w.Write(UnkUint5);
             }
             public void WriteXml(StringBuilder sb, int indent)
             {
                 AwcXml.StringTag(sb, indent, "Name", AwcXml.HashString(Name));
-                AwcXml.ValueTag(sb, indent, "UnkUint1", UnkUint1.ToString());
-                AwcXml.ValueTag(sb, indent, "UnkFloat1", FloatUtil.ToString(UnkFloat1));
-                AwcXml.ValueTag(sb, indent, "UnkFloat2", FloatUtil.ToString(UnkFloat2));
-                AwcXml.ValueTag(sb, indent, "UnkFloat3", FloatUtil.ToString(UnkFloat3));
-                AwcXml.ValueTag(sb, indent, "UnkFloat4", FloatUtil.ToString(UnkFloat4));
-                AwcXml.ValueTag(sb, indent, "UnkFloat5", FloatUtil.ToString(UnkFloat5));
-                AwcXml.ValueTag(sb, indent, "UnkFloat6", FloatUtil.ToString(UnkFloat6));
+                AwcXml.StringTag(sb, indent, "UnkHash", AwcXml.HashString(UnkHash));
+                AwcXml.StringTag(sb, indent, "UnkHash2", AwcXml.HashString(UnkHash2));
+                AwcXml.ValueTag(sb, indent, "UnkCount", UnkCount.ToString());
+                AwcXml.ValueTag(sb, indent, "UnkUint1", UnkCount.ToString());
                 AwcXml.ValueTag(sb, indent, "UnkUint2", UnkUint2.ToString());
+                AwcXml.ValueTag(sb, indent, "UnkUint3", UnkUint3.ToString());
+                AwcXml.ValueTag(sb, indent, "UnkUint4", UnkUint4.ToString());
+                AwcXml.ValueTag(sb, indent, "UnkUint5", UnkUint5.ToString());
             }
             public void ReadXml(XmlNode node)
             {
                 Name = XmlMeta.GetHash(Xml.GetChildInnerText(node, "Name"));
-                UnkUint1 = Xml.GetChildUIntAttribute(node, "UnkUint1");
-                UnkFloat1 = Xml.GetChildFloatAttribute(node, "UnkFloat1");
-                UnkFloat2 = Xml.GetChildFloatAttribute(node, "UnkFloat2");
-                UnkFloat3 = Xml.GetChildFloatAttribute(node, "UnkFloat3");
-                UnkFloat4 = Xml.GetChildFloatAttribute(node, "UnkFloat4");
-                UnkFloat5 = Xml.GetChildFloatAttribute(node, "UnkFloat5");
-                UnkFloat6 = Xml.GetChildFloatAttribute(node, "UnkFloat6");
+                UnkHash = XmlMeta.GetHash(Xml.GetChildInnerText(node, "UnkHash"));
+                UnkHash2 = XmlMeta.GetHash(Xml.GetChildInnerText(node, "UnkHash2"));
+                UnkCount = Xml.GetChildUIntAttribute(node, "UnkCount");
+                UnkUint = Xml.GetChildUIntAttribute(node, "UnkUint");
                 UnkUint2 = Xml.GetChildUIntAttribute(node, "UnkUint2");
+                UnkUint3 = Xml.GetChildUIntAttribute(node, "UnkUint3");
+                UnkUint4 = Xml.GetChildUIntAttribute(node, "UnkUint4");
+                UnkUint5 = Xml.GetChildUIntAttribute(node, "UnkUint5");
             }
 
             public override string ToString()
             {
-                return Name.ToString() + ": " + UnkUint1.ToString() + ", " + UnkFloat1.ToString() + ", " + UnkFloat2.ToString() + ", " + UnkFloat3.ToString() + ", " + UnkFloat4.ToString() + ", " + UnkFloat5.ToString() + ", " + UnkFloat6.ToString() + ", " + UnkUint2.ToString();
+                return Name.ToString(); //+ ": " + UnkUint1.ToString() + ", " + UnkFloat1.ToString() + ", " + UnkFloat2.ToString() + ", " + UnkFloat3.ToString() + ", " + UnkFloat4.ToString() + ", " + UnkFloat5.ToString() + ", " + UnkFloat6.ToString() + ", " + UnkUint2.ToString();
             }
         }
 
@@ -3228,9 +3235,8 @@ namespace CodeWalker.GameFiles
             w.Write(DataSection1);
             w.Write(DataSection2.Length);
             w.Write(DataSection2);
-            w.Write(3771);
+            w.Write(DataSection3.Length);
             w.Write(DataSection3);
-            //w.Write(Data);
         }
 
         public override void WriteXml(StringBuilder sb, int indent)
@@ -3251,7 +3257,7 @@ namespace CodeWalker.GameFiles
 
 
     [TC(typeof(EXP))]
-    public class Unk1Chunk : AwcChunk
+    public class AwcNewFormatChunk : AwcChunk
     {
         public uint Samples { get; set; }
         public int LoopPoint { get; set; }
@@ -3267,11 +3273,17 @@ namespace CodeWalker.GameFiles
         public ushort PeakVal { get { return (ushort)((Peak ?? 0) & 0xFFFF); } set { Peak = (ushort?)(((Peak ?? 0) & 0xFFFF0000) + value); } }
         public ushort PeakUnk { get { return (ushort)((Peak ?? 0) >> 16); } set { Peak = (ushort?)(((Peak ?? 0) & 0xFFFF) + (ushort)(value << 16)); } }
         public AwcCodecType Codec { get; set; }
-        public ushort Unk4 { get; set; }
+        public ushort VorbisHeaderLength { get; set; }
 
-        public override int ChunkSize => 32;
+        public byte[] VorbisDataSection1 { get; set; }
 
-        public Unk1Chunk(AwcChunkInfo info) : base(info)
+        public byte[] VorbisDataSection2 { get; set; }
+
+        public byte[] VorbisDataSection3 { get; set; }
+
+        public override int ChunkSize => 32 + VorbisHeaderLength;
+
+        public AwcNewFormatChunk(AwcChunkInfo info) : base(info)
         { }
 
         public override void Read(DataReader r)
@@ -3288,7 +3300,17 @@ namespace CodeWalker.GameFiles
             Unk2 = r.ReadInt32();
             Peak = r.ReadUInt16();
             Codec = (AwcCodecType)r.ReadInt16();
-            Unk4 = r.ReadUInt16();
+            VorbisHeaderLength = r.ReadUInt16();
+
+            if (VorbisHeaderLength > 0)
+            {
+                var sectionsize = r.ReadInt32();
+                VorbisDataSection1 = r.ReadBytes(sectionsize);
+                var sectionsize2 = r.ReadInt32();
+                VorbisDataSection2 = r.ReadBytes(sectionsize2);
+                var sectionsize3 = r.ReadInt32();
+                VorbisDataSection3 = r.ReadBytes(sectionsize3);
+            }
         }
 
         public override void Write(DataWriter w)
@@ -3305,7 +3327,17 @@ namespace CodeWalker.GameFiles
             w.Write(Unk2);
             w.Write(Peak.Value);
             w.Write((short)Codec);
-            w.Write(Unk4);
+            w.Write(VorbisHeaderLength);
+
+            if (VorbisHeaderLength > 0)
+            {
+                w.Write(VorbisDataSection1.Length);
+                w.Write(VorbisDataSection1);
+                w.Write(VorbisDataSection2.Length);
+                w.Write(VorbisDataSection2);
+                w.Write(VorbisDataSection3.Length);
+                w.Write(VorbisDataSection3);
+            }
         }
 
         public override void WriteXml(StringBuilder sb, int indent)
@@ -3320,10 +3352,10 @@ namespace CodeWalker.GameFiles
             AwcXml.ValueTag(sb, indent, "LoopBegin", LoopBegin.ToString());
             AwcXml.ValueTag(sb, indent, "LoopEnd", LoopEnd.ToString());
             AwcXml.ValueTag(sb, indent, "LoopPoint", LoopPoint.ToString());
+            AwcXml.ValueTag(sb, indent, "VorbisHeaderLength", VorbisHeaderLength.ToString());
             AwcXml.ValueTag(sb, indent, "Unk1", Unk1.ToString());
             AwcXml.ValueTag(sb, indent, "Unk2", Unk2.ToString());
-            AwcXml.ValueTag(sb, indent, "Unk3", Peak.ToString());
-            AwcXml.ValueTag(sb, indent, "Unk4", Unk4.ToString());
+            AwcXml.ValueTag(sb, indent, "Unk3", Peak.ToString()); 
         }
 
         public override void ReadXml(XmlNode node)
@@ -3337,10 +3369,10 @@ namespace CodeWalker.GameFiles
             LoopBegin = (ushort)Xml.GetChildUIntAttribute(node, "LoopBegin");
             LoopEnd = (ushort)Xml.GetChildUIntAttribute(node, "LoopEnd");
             LoopPoint = Xml.GetChildIntAttribute(node, "LoopPoint");
+            VorbisHeaderLength = (ushort)Xml.GetChildUIntAttribute(node, "VorbisHeaderLength");
             Unk1 = (ushort)Xml.GetChildUIntAttribute(node, "Unk1");
             Unk2 = Xml.GetChildIntAttribute(node, "Unk2");
             Peak = (ushort)Xml.GetChildUIntAttribute(node, "Unk3");
-            Unk4 = (ushort)Xml.GetChildUIntAttribute(node, "Unk4");
         }
 
         public override string ToString()
@@ -3686,7 +3718,202 @@ namespace CodeWalker.GameFiles
 
     }
 
+    public class VorbisCodec
+    {
+        public static unsafe byte[] DecodeVorbis(byte[] data, byte[] header1, byte[] header2, byte[] header3)
+        {
+            byte[][] dataPages = BufferSplit(data, 2048);
 
+            vorbis_info info;
+            vorbis_comment comment;
+            vorbis_dsp_state state;
+            vorbis_block vorbis_Block;
+
+            Vorbis.vorbis_info_init(&info);
+
+            Vorbis.vorbis_comment_init(&comment);
+
+            ogg_packet infoPacket = new ogg_packet();
+            fixed (byte* bptr = header1)
+            {
+                infoPacket.packet = bptr;
+            }
+            infoPacket.bytes = new CLong(header1.Length);
+            infoPacket.b_o_s = new CLong(256);
+            infoPacket.e_o_s = new CLong(0);
+            infoPacket.granulepos = -1;
+            infoPacket.packetno = 0;
+
+            if (Vorbis.vorbis_synthesis_headerin(&info, &comment, &infoPacket) == 1)
+            {
+                throw new Exception("Unable to process info header.");
+            }
+            
+
+            ogg_packet commentPacket = new ogg_packet();
+            fixed (byte* bptr = header2)
+            {
+                commentPacket.packet = bptr;
+            }
+            commentPacket.bytes = new CLong(header2.Length);
+            commentPacket.b_o_s = new CLong(0);
+            commentPacket.e_o_s = new CLong(0);
+            commentPacket.granulepos = -1;
+            commentPacket.packetno = 0;
+
+            if (Vorbis.vorbis_synthesis_headerin(&info, &comment, &commentPacket) == 1)
+            {
+                throw new Exception("Unable to process comment header.");
+            }
+
+            ogg_packet codebookPacket = new ogg_packet();
+            fixed (byte* bptr = header3)
+            {
+                codebookPacket.packet = bptr;
+            }
+            codebookPacket.bytes = new CLong(header3.Length);
+            codebookPacket.b_o_s = new CLong(0);
+            codebookPacket.e_o_s = new CLong(0);
+            codebookPacket.granulepos = -1;
+            codebookPacket.packetno = 0;
+
+            if (Vorbis.vorbis_synthesis_headerin(&info, &comment, &codebookPacket) == 1)
+            {
+                throw new Exception("Unable to process codebook header.");
+            }
+
+            MemoryStream ms = new MemoryStream();
+            BinaryWriter writer = new BinaryWriter(ms);
+            
+
+
+            if (Vorbis.vorbis_synthesis_init(&state, &info) == 0)
+            {
+                Vorbis.vorbis_block_init(&state, &vorbis_Block);
+
+                File.WriteAllBytes(@"C:\Users\Western\Downloads\rawdatavorbis.bin", dataPages[0]);
+                foreach (byte[] page in dataPages)
+                {
+                    MemoryStream ms2 = new MemoryStream(page);
+                    BinaryReader reader = new BinaryReader(ms2);
+
+                    uint packetsize = reader.ReadUInt16();
+                    while (packetsize > 0)
+                    {
+                        ogg_packet workingPacket = new ogg_packet();
+
+                        workingPacket.bytes = new CLong((int)packetsize);
+
+                        byte[] bytes = reader.ReadBytes((int)packetsize);
+
+                        if (bytes.Length == 0)
+                        {
+                            break;
+                        }
+
+                        fixed (byte* bptr = bytes)
+                        {
+                            workingPacket.packet = bptr;
+                        }
+
+                        workingPacket.b_o_s = new CLong(0);
+                        workingPacket.e_o_s = new CLong(0);
+                        workingPacket.granulepos = -1;
+                        workingPacket.packetno = 0;
+
+                        if (Vorbis.vorbis_synthesis(&vorbis_Block, &workingPacket) == 0)
+                        {
+                            Vorbis.vorbis_synthesis_blockin(&state, &vorbis_Block);
+
+                            float** pcm;
+                            int samples;
+
+                            while ((samples = Vorbis.vorbis_synthesis_pcmout(&state, &pcm)) > 0)
+                            {
+                                int outputLength = (samples < 2048 / info.channels) ? samples : 2048 / info.channels;
+
+                                int blockSize = sizeof(short) * outputLength * info.channels;
+                                short* result_ptr = stackalloc short[blockSize];
+
+                                // Convert floats to 16 bit signed ints (host order) and interleave
+                                for (int channel = 0; channel < info.channels; channel++)
+                                {
+                                    short* first = result_ptr + channel;
+                                    short* current = first;
+                                    float* pcm_channel = pcm[channel];
+
+                                    for (int position = 0; position < outputLength; position++)
+                                    {
+                                        int value = (int)(pcm_channel[position] * 32768.0f);
+
+                                        // might as well guard against clipping.
+                                        if (value > 32767) value = 32767;
+                                        if (value < -32768) value = -32768;
+
+                                        *current = (short)value;
+                                        current += info.channels;
+                                    }
+                                }
+
+                                byte[] resultBlock = new byte[blockSize];
+
+                                Marshal.Copy
+                                (
+                                    (IntPtr)result_ptr,
+                                    resultBlock, 0,
+                                    resultBlock.Length
+                                );
+
+                                writer.Write(resultBlock);
+
+                                Vorbis.vorbis_synthesis_read(&state, outputLength); /* tell libvorbis how
+                                                      many samples we
+                                                      actually consumed */
+                            }
+                        }
+                        else
+                        {
+                            continue;
+                        }
+
+                        packetsize = reader.ReadUInt16();
+                    }
+
+                   
+                }
+
+                
+
+                Vorbis.vorbis_block_clear(&vorbis_Block);
+                Vorbis.vorbis_dsp_clear(&state);
+
+            }
+            else
+            {
+                throw new Exception("vorbis_synthesis_init failed");
+            }
+            
+            Vorbis.vorbis_comment_clear(&comment);
+            Vorbis.vorbis_info_clear(&info);
+
+
+            File.WriteAllBytes(@"C:\Users\Western\Downloads\rawdata.bin", ms.ToArray());
+            return ms.ToArray();
+        }
+
+        private static byte[][] BufferSplit(byte[] buffer, int blockSize)
+        {
+            byte[][] blocks = new byte[(buffer.Length + blockSize - 1) / blockSize][];
+
+            for (int i = 0, j = 0; i < blocks.Length; i++, j += blockSize)
+            {
+                blocks[i] = new byte[Math.Min(blockSize, buffer.Length - j)];
+                Array.Copy(buffer, j, blocks[i], 0, blocks[i].Length);
+            }
+
+            return blocks;
+        }
+    }
 
 
 

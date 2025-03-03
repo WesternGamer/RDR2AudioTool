@@ -14,8 +14,10 @@ namespace RDR2AudioTool
         [STAThread]
         public static void Main(string[] args)
         {
+#if !DEBUG
             try
             {
+#endif
                 if (File.Exists("strings.txt"))
                 {
                     JenkIndex.LoadStringsList("strings.txt");
@@ -26,15 +28,13 @@ namespace RDR2AudioTool
                 var app = new App();
                 app.InitializeComponent();
                 app.Run();
+#if !DEBUG
             }
             catch (Exception ex)
             {
-#if DEBUG
-                throw;
-#else
                 MessageBox.Show(ex.ToString(), "An Critical Error Occurred", MessageBoxButtons.OK, MessageBoxIcon.Error);
-#endif
             }
-        }
+#endif
+}
     }
 }

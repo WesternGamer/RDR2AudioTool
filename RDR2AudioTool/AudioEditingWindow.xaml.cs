@@ -1,9 +1,11 @@
 
 using CodeWalker;
 using CodeWalker.GameFiles;
+using Microsoft.Win32;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -11,6 +13,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Threading;
+using System.Xml.Linq;
 
 
 namespace RDR2AudioTool
@@ -204,12 +207,13 @@ namespace RDR2AudioTool
 
             if (dialogResult == true)
             {
+                
                 if ((bool)(Awc?.MultiChannelFlag))
                 {
                     Awc?.MultiChannelSource?.CompactMultiChannelSources(Awc?.Streams);
                 }
 
-
+                
                 Awc?.BuildPeakChunks();
 
                 Awc?.BuildChunkIndices();
@@ -374,6 +378,7 @@ namespace RDR2AudioTool
                 PlayNextButton.IsEnabled = true;
                 StreamList.IsEnabled = true;
                 searchTextBox.IsEnabled = true;
+                MoreOptionsButton.IsEnabled = true;
 
                 StreamList.SelectedIndex = 0;
             }
@@ -799,69 +804,67 @@ namespace RDR2AudioTool
 
         private void MenuItemOption1_Click(object sender, RoutedEventArgs e)
         {
-            if(StreamList.SelectedItems.Count > 1) 
+            System.Windows.Forms.FolderBrowserDialog folderBrowserDialog = new System.Windows.Forms.FolderBrowserDialog();
+
+            if (folderBrowserDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
             {
-                foreach(var item in StreamList.SelectedItems)
-                {
-                    if (item is ItemInfo selectedFileItem) // just doing mono for now, will do stereo later
-                    {
-                        if (currentExportPath == string.Empty)
-                        {
-                            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
-                            {
-                                Filter = "WAV Files|*.wav",
-                                Title = "Export to WAV",
-                                FileName = selectedFileItem.Name,
-                            };
-
-                            if (saveFileDialog.ShowDialog() == true)
-                            {
-                                string outputPath = saveFileDialog.FileName;
-                                byte[] audioData = selectedFileItem.Stream.GetPcmData();
-
-                                using (WaveFileWriter waveWriter = new WaveFileWriter(outputPath, new WaveFormat(selectedFileItem.Stream.SamplesPerSecond, 16, 1)))
-                                {
-                                    waveWriter.Write(audioData, 0, audioData.Length);
-                                }
-                                currentExportPath = Path.GetDirectoryName(outputPath);
-                            }
-                        }
-                        else
-                        {
-                            byte[] audioData = selectedFileItem.Stream.GetPcmData();
-                            using (WaveFileWriter waveWriter = new WaveFileWriter(currentExportPath + $"/{selectedFileItem.Name}.wav", new WaveFormat(selectedFileItem.Stream.SamplesPerSecond, 16, 1)))
-                            {
-                                waveWriter.Write(audioData, 0, audioData.Length);
-                            }
-                        }
-                    }
-                }
-                MessageBox.Show($"Export Complete");
-                currentExportPath = string.Empty;   
+                return;
             }
-            else if(StreamList.SelectedItems.Count == 1) 
+
+            string exportPath = folderBrowserDialog.SelectedPath;
+
+            if (StreamList.SelectedItems.Count > 1) 
             {
-                if (StreamList.SelectedItem is ItemInfo selectedFileItem)
+                foreach (var item in StreamList.SelectedItems)
                 {
-                    var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                    if (item is ItemInfo selectedFileItem)
                     {
-                        Filter = "WAV Files|*.wav",
-                        Title = "Export to WAV",
-                        FileName = selectedFileItem.Name,
-                    };
-
-                    if (saveFileDialog.ShowDialog() == true)
-                    {
-                        string outputPath = saveFileDialog.FileName;
                         byte[] audioData = selectedFileItem.Stream.GetPcmData();
-
-                        using (WaveFileWriter waveWriter = new WaveFileWriter(outputPath, new WaveFormat(selectedFileItem.Stream.SamplesPerSecond, 16, 1)))
+                        using (WaveFileWriter waveWriter = new WaveFileWriter(exportPath + $"/{selectedFileItem.Name}.wav", new WaveFormat(selectedFileItem.Stream.SamplesPerSecond, 16, 1)))
                         {
                             waveWriter.Write(audioData, 0, audioData.Length);
                         }
-                        MessageBox.Show($"Exported {selectedFileItem.Name} to {outputPath}");
                     }
+                    else
+                    {
+                        StereoItemInfo selectedItem = item as StereoItemInfo;
+
+                        byte[] stereoPcm = CombineLeftAndRightChannel(selectedItem.StreamLeft.GetPcmData(), selectedItem.StreamRight.GetPcmData());
+
+                        using (WaveFileWriter waveWriter = new WaveFileWriter(exportPath + $"/{selectedItem.Name}.wav", new WaveFormat(selectedItem.StreamLeft.SamplesPerSecond, 16, 2)))
+                        {
+                            waveWriter.Write(stereoPcm, 0, stereoPcm.Length);
+                        }
+                    }
+                    MessageBox.Show($"Exported {StreamList.SelectedItems.Count} audio tracks to {exportPath}", "Audio Export Successful.", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
+            }
+            else if (StreamList.SelectedItems.Count == 1) 
+            {
+                if (StreamList.SelectedItem is ItemInfo selectedFileItem)
+                {
+                    byte[] audioData = selectedFileItem.Stream.GetPcmData();
+
+                    using (WaveFileWriter waveWriter = new WaveFileWriter(exportPath + $"/{selectedFileItem.Name}.wav", new WaveFormat(selectedFileItem.Stream.SamplesPerSecond, 16, 1)))
+                    {
+                        waveWriter.Write(audioData, 0, audioData.Length);
+                    }
+                    MessageBox.Show($"Exported {selectedFileItem.Name} to {exportPath}", "Audio Export Successful.", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                }
+                else
+                {
+                    StereoItemInfo selectedItem = StreamList.SelectedItem as StereoItemInfo;
+
+                    byte[] stereoPcm = CombineLeftAndRightChannel(selectedItem.StreamLeft.GetPcmData(), selectedItem.StreamRight.GetPcmData());
+
+                    using (WaveFileWriter waveWriter = new WaveFileWriter(exportPath + $"/{selectedItem.Name}.wav", new WaveFormat(selectedItem.StreamLeft.SamplesPerSecond, 16, 2)))
+                    {
+                        waveWriter.Write(stereoPcm, 0, stereoPcm.Length);
+                    }
+                    MessageBox.Show($"Exported {selectedItem.Name} to {exportPath}", "Audio Export Successful.", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+               
             }
         }
 
@@ -884,7 +887,18 @@ namespace RDR2AudioTool
             {
                 if (StreamList != null && originalItems != null)
                 {
-                    var filteredItems = originalItems.Where(item => ((ItemInfo)item).Name.ToLower().Contains(keyword)).ToList(); //We can group all as ItemInfo as we only want the name
+                    var filteredItems = new List<object>();
+                    foreach (var item in originalItems)
+                    {
+                        if (item is ItemInfo itemInfo && itemInfo.Name.ToLower().Contains(keyword))
+                        {
+                            filteredItems.Add(item);
+                        }
+                        else if (item is StereoItemInfo stereoItemInfo && stereoItemInfo.Name.ToLower().Contains(keyword))
+                        {
+                            filteredItems.Add(stereoItemInfo);
+                        }
+                    }
 
                     StreamList.Items.Clear();
                     foreach (var item in filteredItems)
@@ -897,6 +911,59 @@ namespace RDR2AudioTool
             {
                 CollectionViewSource.GetDefaultView(StreamList.ItemsSource).Refresh();
             }
+        }
+
+        private void MoreOptionsButton_Click(object sender, RoutedEventArgs e)
+        {
+            System.Windows.Forms.FolderBrowserDialog folderBrowserDialog = new System.Windows.Forms.FolderBrowserDialog();
+
+            if (folderBrowserDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+            {
+                return;
+            }
+
+            string folderPath = folderBrowserDialog.SelectedPath;
+
+            string[] files = Directory.GetFiles(folderPath, "*.wav", SearchOption.TopDirectoryOnly);
+
+            foreach (string file in files)
+            {
+                foreach (var stream in Awc.Streams)
+                {
+                    if (stream.Name.ToLower().Equals(Path.GetFileNameWithoutExtension(file).ToLower()))
+                    {
+                        WaveFileReader wavFile = new WaveFileReader(file);
+
+                        WaveFormat format = new WaveFormat(wavFile.WaveFormat.SampleRate, 16, wavFile.WaveFormat.Channels);
+
+                        MemoryStream outputStream = new MemoryStream();
+
+                        MediaFoundationResampler resampler = new MediaFoundationResampler(wavFile, format);
+
+                        byte[] array = new byte[resampler.WaveFormat.AverageBytesPerSecond * 4];
+                        while (true)
+                        {
+                            int num = resampler.Read(array, 0, array.Length);
+                            if (num == 0)
+                            {
+                                break;
+                            }
+
+                            outputStream.Write(array, 0, num);
+                        }
+
+                        resampler.Dispose();
+
+                        byte[] bytes = outputStream.ToArray();
+
+                        outputStream.Dispose();
+
+                        Awc?.ReplaceAudioStreamSingle(stream.Hash, (uint)(bytes.Length / 2), (uint)wavFile.WaveFormat.SampleRate, bytes, AwcCodecType.PCM);
+                    }
+                } 
+            }
+
+            RefreshList();
         }
     }
 }
