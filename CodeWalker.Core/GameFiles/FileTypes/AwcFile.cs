@@ -1555,7 +1555,7 @@ namespace CodeWalker.GameFiles
                 {
                     if (Awc.SingleChannelEncryptFlag && !Awc.WholeFileEncrypted)
                     {
-                        throw new NotSupportedException("File is encrypted, contact the developer for help.");
+                        //throw new NotSupportedException("File is encrypted, contact the developer for help.");
                         //AwcFile.Decrypt_RSXXTEA(DataChunk.Data, GTA5Keys.PC_AWC_KEY);
                     }
                 }
